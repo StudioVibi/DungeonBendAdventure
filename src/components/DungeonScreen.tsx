@@ -196,8 +196,22 @@ export function DungeonScreen(props: Props) {
         {plan.floors.map((f, i) => {
           const fr = sim.floors[i]
           const dead = sim.death && sim.death.floor <= i
+          const closable = i > 0 && i === plan.floors.length - 1
           return (
             <button key={i} className={`tab ${i === floorIdx ? 'active' : ''} ${dead ? 'dead' : ''}`} onClick={() => props.setFloorIdx(i)}>
+              {closable && (
+                <span
+                  className="tab-close"
+                  title="Fechar este andar (remove a escada do andar anterior)"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    commit(removeStairs(plan, i - 1))
+                    if (floorIdx >= i) props.setFloorIdx(i - 1)
+                  }}
+                >
+                  ×
+                </span>
+              )}
               Andar {i + 1}
               <span className="tab-sub">
                 Nv {i + 1} · {f.steps.length} {f.steps.length === 1 ? 'onda' : 'ondas'} · <HeartIcon size={13} dead={fr.hpEnd <= 0} /> {fr.hpEnd}
@@ -333,21 +347,18 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
     const a = availability(save, plan, floorIdx, tool)
     const k = (seen[tool] = (seen[tool] ?? 0) + 1)
     const usedHere = k <= a.usedOnFloor
-    const noStock = !usedHere && a.left <= 0
-    const disabled = usedHere || noStock
+    const disabled = usedHere
     const it = ITEMS[tool as keyof typeof ITEMS]
     return (
       <div
         key={key}
         className={`slot ${disabled ? 'used' : ''} ${p.dragging === tool ? 'lifted' : ''}`}
         onPointerDown={disabled ? undefined : p.onStart(tool)}
-        title={`${it.name} — ${usedHere ? 'já usado neste andar' : noStock ? 'sem estoque' : 'arraste para a trilha'}`}
+        title={`${it.name} — ${usedHere ? 'já usado neste andar (renova no próximo)' : 'arraste para a trilha'}`}
       >
         <img src={it.icon} alt="" draggable={false} />
         <span className={`slot-val ${isPotion(tool) ? 'heal' : 'dmg'}`}>{isPotion(tool) ? `+${it.value}` : `⚔${it.value}`}</span>
-        {isPotion(tool) && <span className="slot-stock">x{save.stock[tool]}</span>}
         {usedHere && <span className="slot-flag">usado</span>}
-        {noStock && <span className="slot-flag">sem estoque</span>}
       </div>
     )
   }

@@ -72,7 +72,7 @@ h3, h4 { margin: .4em 0; }
 .hpbar { position: relative; width: 190px; height: 24px; background: #3a1d20; border-radius: 7px; overflow: hidden; border: 1px solid #5b2a2e; margin-top: 2px; }
 .hpbar-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #ef5a5f, #b5272d); transition: width .25s; }
 .hpbar-text { position: relative; display: flex; align-items: center; gap: 5px; height: 100%; padding: 0 8px; font-weight: 800; font-size: 14px; text-shadow: 0 1px 2px #000; }
-.delta { font-size: 13px; font-weight: 800; padding: 1px 6px; border-radius: 6px; animation: pop .2s; }
+.delta { font-size: 13px; font-weight: 800; padding: 1px 6px; border-radius: 6px; }
 .delta.good { color: #0e2a0e; background: var(--heal); }
 .delta.bad { color: #2a0e0e; background: var(--bad); }
 @keyframes pop { from { transform: scale(.7); opacity: 0 } to { transform: scale(1); opacity: 1 } }
@@ -83,6 +83,10 @@ h3, h4 { margin: .4em 0; }
   border-radius: 10px 10px 0 0; padding: 6px 16px; cursor: pointer; display: flex; flex-direction: column; align-items: flex-start;
   font-family: 'Jaro', sans-serif; font-size: 17px;
 }
+.tab { position: relative; }
+.tab-close { position: absolute; top: 2px; right: 5px; width: 18px; height: 18px; line-height: 16px; text-align: center; border-radius: 50%; font-family: 'Trebuchet MS', sans-serif; font-size: 15px; color: var(--muted); }
+.tab-close:hover { background: #7a2c31; color: #fff; }
+.tab:has(.tab-close) { padding-right: 28px; }
 .tab.active { color: var(--text); background: #34293a; border-color: var(--accent); }
 .tab.dead { color: var(--bad); }
 .tab-sub { font-family: 'Trebuchet MS', sans-serif; font-size: 11px; display: flex; align-items: center; gap: 3px; }
@@ -120,8 +124,7 @@ h3, h4 { margin: .4em 0; }
 .order-text { fill: #3a2614; font-weight: 900; font-size: 14px; }
 .heart-text { font-weight: 900; paint-order: stroke; stroke: #2a1010; stroke-width: 3px; }
 .death-text { fill: var(--bad); font-weight: 900; font-size: 16px; paint-order: stroke; stroke: #1a0a0a; stroke-width: 4px; }
-.ghost-pulse { animation: ghostpulse 1s ease-in-out infinite; }
-@keyframes ghostpulse { 50% { opacity: .55; } }
+.path-item.ghost, .stairs-node.ghost { opacity: .7; pointer-events: none; }
 
 /* itens na trilha */
 .path-item { cursor: pointer; }

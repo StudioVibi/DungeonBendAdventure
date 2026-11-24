@@ -3,7 +3,7 @@ import { DungeonScreen } from './components/DungeonScreen'
 import { CollectionScreen, ReportModal, SelectScreen, ShopScreen } from './components/Screens'
 import { dungeonById, type DungeonId } from './game/data'
 import { newPlan, sanitizePlan, simulate, type Plan, type SimResult } from './game/plan'
-import { useSave } from './game/store'
+import { normalizeLoadout, useSave } from './game/store'
 
 type Screen = 'select' | 'dungeon' | 'shop' | 'collection'
 
@@ -87,7 +87,7 @@ export default function App() {
       for (const [k, n] of Object.entries(r.kills)) cards[k] = (cards[k] ?? 0) + n
       const stock = { ...s.stock }
       for (const [id, n] of Object.entries(r.potionsUsed)) stock[id as keyof typeof stock] = Math.max(0, stock[id as keyof typeof stock] - (n ?? 0))
-      return { ...s, gold: s.gold + r.gold, cards, stock, plan: null }
+      return normalizeLoadout({ ...s, gold: s.gold + r.gold, cards, stock, plan: null })
     })
     history.current = []
     setReport(null)

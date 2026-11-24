@@ -18,13 +18,26 @@ export function defaultSave(): Save {
   }
 }
 
+/** Desequipa slots que excedem o estoque (ex.: poções consumidas na última run). */
+export function normalizeLoadout(s: Save): Save {
+  const fit = <T extends ItemId>(slots: (T | null)[]) => {
+    const seen: Partial<Record<ItemId, number>> = {}
+    return slots.map((id) => {
+      if (!id) return null
+      seen[id] = (seen[id] ?? 0) + 1
+      return seen[id]! <= (s.stock[id] ?? 0) ? id : null
+    })
+  }
+  return { ...s, loadout: { potions: fit(s.loadout.potions), weapons: fit(s.loadout.weapons) } }
+}
+
 function load(): Save {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return defaultSave()
     const s = JSON.parse(raw) as Save
     const d = defaultSave()
-    return {
+    return normalizeLoadout({
       ...d,
       ...s,
       stock: { ...d.stock, ...s.stock },
@@ -32,7 +45,7 @@ function load(): Save {
         potions: Array.from({ length: POTION_SLOTS }, (_, i) => s.loadout?.potions?.[i] ?? null),
         weapons: Array.from({ length: WEAPON_SLOTS }, (_, i) => s.loadout?.weapons?.[i] ?? null),
       },
-    }
+    })
   } catch {
     return defaultSave()
   }

@@ -39,7 +39,7 @@ export function HeartBadge({ x, y, hp, size = 34, ghost = false, grey = false }:
   const s = size / 24
   const fill = grey ? '#6b6461' : dead ? '#2b1f22' : '#e0474c'
   return (
-    <g transform={`translate(${x} ${y})`} opacity={ghost ? 0.75 : 1} className={ghost ? 'ghost-pulse' : undefined} pointerEvents="none">
+    <g transform={`translate(${x} ${y})`} opacity={ghost ? 0.7 : 1} pointerEvents="none">
       <g transform={`translate(${-size / 2} ${-size / 2}) scale(${s})`}>
         <path d={HEART_PATH} fill={fill} stroke={dead && !grey ? '#ff5b5b' : '#2a1414'} strokeWidth={1.6} strokeLinejoin="round" />
         {!dead && !grey && <path d="M6.5 6.2c-1.6.3-2.4 1.8-2.2 3.2" stroke="#fff" strokeOpacity={0.6} strokeWidth={1.4} fill="none" strokeLinecap="round" />}

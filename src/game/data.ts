@@ -37,7 +37,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     sprite: '/assets/monsters/rat.webp',
     hp: [2, 6, 10, 14, 18, 23, 27, 27, 27, 27, 27, 27, 27, 27, 27],
     gold: [1, 3, 5, 7, 9, 11, 13, 13, 13, 13, 13, 13, 13, 13, 13],
-    head: { cx: 0.27, cy: 0.63, r: 0.2 },
+    head: { cx: 0.23, cy: 0.72, r: 0.17 },
     ring: '#8fa3c7',
   },
   bat: {
@@ -46,7 +46,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     sprite: '/assets/monsters/bat.webp',
     hp: [4, 7, 10, 13, 16, 20, 23, 26, 29, 29, 29, 29, 29, 29, 29],
     gold: [1, 2, 4, 5, 7, 9, 10, 12, 13, 13, 13, 13, 13, 13, 13],
-    head: { cx: 0.47, cy: 0.54, r: 0.21 },
+    head: { cx: 0.4, cy: 0.59, r: 0.2 },
     ring: '#a77bd1',
   },
   spider: {
@@ -55,7 +55,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     sprite: '/assets/monsters/spider.webp',
     hp: [6, 10, 14, 18, 22, 26, 26, 26, 26, 26, 26, 26, 26, 26, 26],
     gold: [1, 3, 5, 7, 9, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11],
-    head: { cx: 0.33, cy: 0.62, r: 0.2 },
+    head: { cx: 0.33, cy: 0.65, r: 0.17 },
     ring: '#d9534f',
   },
   slime_green: {
@@ -64,7 +64,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     sprite: '/assets/monsters/slime-green.webp',
     hp: [4, 6, 9, 11, 14, 16, 19, 21, 24, 26, 29, 31, 34, 36, 39],
     gold: [1, 2, 3, 4, 6, 7, 8, 9, 11, 12, 13, 14, 16, 17, 18],
-    head: { cx: 0.54, cy: 0.66, r: 0.27 },
+    head: { cx: 0.52, cy: 0.69, r: 0.23 },
     ring: '#5fcf4a',
   },
   plant: {
@@ -73,7 +73,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     sprite: '/assets/monsters/plant.webp',
     hp: [12, 15, 19, 23, 27, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31],
     gold: [1, 2, 4, 6, 8, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10],
-    head: { cx: 0.44, cy: 0.5, r: 0.32 },
+    head: { cx: 0.42, cy: 0.55, r: 0.27 },
     ring: '#f07a2a',
   },
   plant_carnivore: {
@@ -82,7 +82,7 @@ export const MONSTERS: Record<MonsterId, MonsterDef> = {
     sprite: '/assets/monsters/plant-carnivore.webp',
     hp: [9, 12, 15, 18, 21, 25, 28, 31, 34, 34, 34, 34, 34, 34, 34],
     gold: [4, 5, 7, 8, 10, 12, 13, 15, 16, 16, 16, 16, 16, 16, 16],
-    head: { cx: 0.5, cy: 0.56, r: 0.26 },
+    head: { cx: 0.49, cy: 0.57, r: 0.21 },
     ring: '#d4567a',
   },
 }

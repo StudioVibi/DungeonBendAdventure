@@ -69,10 +69,8 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
       const loadout = { potions: [...s.loadout.potions], weapons: [...s.loadout.weapons] }
       // auto-equipa se houver slot livre
       if (isPotion(id)) {
-        if (!loadout.potions.includes(id)) {
-          const free = loadout.potions.indexOf(null)
-          if (free >= 0) loadout.potions[free] = id
-        }
+        const free = loadout.potions.indexOf(null)
+        if (free >= 0 && loadout.potions.filter((x) => x === id).length < stock[id]) loadout.potions[free] = id
       } else {
         const free = loadout.weapons.indexOf(null)
         if (free >= 0) loadout.weapons[free] = id as WeaponId
@@ -85,7 +83,8 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
       const loadout = { potions: [...s.loadout.potions], weapons: [...s.loadout.weapons] }
       if (isPotion(id)) {
         const free = loadout.potions.indexOf(null)
-        if (free < 0 || (s.stock[id] ?? 0) < 1) return s
+        const equipped = loadout.potions.filter((x) => x === id).length
+        if (free < 0 || equipped >= (s.stock[id] ?? 0)) return s
         loadout.potions[free] = id
       } else {
         const free = loadout.weapons.indexOf(null)
@@ -146,7 +145,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
         </section>
         <aside className="loadout">
           <h3>Mochila</h3>
-          <p className="muted small">Leve até 3 poções e 2 armas. Cada slot pode ser usado 1x por andar. Poções usadas são consumidas do estoque; armas não.</p>
+          <p className="muted small">Leve até 3 poções e 2 armas. A mochila renova a cada andar: cada slot pode ser usado 1x por andar. Ao fim da run, as poções dos slots usados são consumidas; armas não.</p>
           <div className="loadout-row">{save.loadout.potions.map((id, i) => slot(id, 'potions', i))}</div>
           <div className="loadout-row">{save.loadout.weapons.map((id, i) => slot(id, 'weapons', i))}</div>
           <h4>Seus itens</h4>
@@ -156,7 +155,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
               <button key={id} className="owned" onClick={() => equip(id)} title="Clique para equipar">
                 <img src={ITEMS[id].icon} alt="" />
                 <span>{ITEMS[id].name}</span>
-                <b>x{save.stock[id]}</b>
+                <b>{equippedCount(save, id)}/{save.stock[id]}</b>
               </button>
             ))}
           </div>
@@ -266,4 +265,8 @@ export function ReportModal(p: { sim: SimResult; dungeonName: string; onCollect:
       </div>
     </div>
   )
+}
+
+function equippedCount(save: Save, id: ItemId) {
+  return [...save.loadout.potions, ...save.loadout.weapons].filter((x) => x === id).length
 }

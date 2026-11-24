@@ -5,6 +5,12 @@ import { floorMap, MAP_H, MAP_W, START, type Wave } from '../game/mapgen'
 import { waveById, waveHp, type Plan, type SimResult } from '../game/plan'
 import { HeartBadge, MonsterHead, useFrame } from './ui'
 
+/** Sprite animado separado para não re-renderizar o mapa inteiro a cada frame. */
+function HeroSprite({ x, y }: { x: number; y: number }) {
+  const f = useFrame(HERO.frames.length)
+  return <image href={HERO.frames[f]} x={x} y={y} width={110} height={127} />
+}
+
 export type Ghost = { kind: 'wave'; stepIdx: number } | { kind: 'item'; stepIdx: number; itemIdx: number } | { kind: 'stairs' }
 
 export interface FloorGeom {
@@ -86,7 +92,6 @@ export function MapView(p: Props) {
   const fr = sim.floors[floorIdx]
   const g = floorGeometry(plan, floorIdx)
   const dungeon = dungeonById(plan.dungeon)
-  const heroFrame = useFrame(HERO.frames.length)
   const stepOf = new Map(floor.steps.map((s, i) => [s.waveId, i]))
   const ghostWaveStep = ghost?.kind === 'wave' ? ghost.stepIdx : -1
 
@@ -177,7 +182,7 @@ export function MapView(p: Props) {
           return (
             <g
               key={`${si}-${ii}`}
-              className={`path-item ${isGhost ? 'ghost-pulse' : ''}`}
+              className={`path-item ${isGhost ? 'ghost' : ''}`}
               transform={`translate(${pt.x} ${pt.y})`}
               onClick={(ev) => {
                 ev.stopPropagation()
@@ -206,17 +211,17 @@ export function MapView(p: Props) {
       )}
 
       {/* início do andar */}
-      <g pointerEvents="all" className="start-node" onPointerDown={floor.steps.length === 0 ? p.onTailPointerDown : undefined}>
+      <g className="start-node" onPointerDown={floor.steps.length === 0 ? p.onTailPointerDown : undefined}>
         <ellipse cx={START.x} cy={START.y + 52} rx={46} ry={12} fill="#000" opacity={0.35} />
         {floorIdx > 0 && <image href={STAIRS_ICON} x={START.x - 70} y={START.y + 6} width={50} height={50} opacity={0.9} />}
-        <image href={HERO.frames[heroFrame]} x={START.x - 55} y={START.y - 72} width={110} height={127} />
+        <HeroSprite x={START.x - 55} y={START.y - 72} />
         <HeartBadge x={START.x + 52} y={START.y - 52} hp={fr.hpStart} />
       </g>
 
       {/* escada */}
       {floor.stairs && (
         <g
-          className={`stairs-node ${ghost?.kind === 'stairs' ? 'ghost-pulse' : ''}`}
+          className={`stairs-node ${ghost?.kind === 'stairs' ? 'ghost' : ''}`}
           transform={`translate(${floor.stairs.x} ${floor.stairs.y})`}
           onClick={p.onStairsClick}
         >
@@ -228,7 +233,7 @@ export function MapView(p: Props) {
       )}
 
       {/* alça para arrastar a trilha a partir do fim */}
-      {floor.steps.length > 0 && (
+      {floor.steps.length > 0 && !ghost && (
         <g className="tail-handle" transform={`translate(${g.tail.x} ${g.tail.y})`} onPointerDown={p.onTailPointerDown}>
           <title>Arraste para conectar a próxima onda</title>
           <circle r={g.tailR + 2} className="tail-ring" />

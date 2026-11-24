@@ -66,8 +66,6 @@ export interface ToolAvailability {
   /** limite por andar (slots na mochila) */
   perFloor: number
   usedOnFloor: number
-  /** só poções: estoque total que ainda não foi reservado no plano */
-  stockLeft?: number
 }
 
 function countTool(floor: FloorPlan, tool: ToolId) {
@@ -84,14 +82,8 @@ export function availability(save: Save, plan: Plan, floorIdx: number, tool: Too
   }
   const slots = isPotion(tool) ? save.loadout.potions : save.loadout.weapons
   const perFloor = slots.filter((s) => s === tool).length
-  let left = perFloor - usedOnFloor
-  if (isPotion(tool)) {
-    const usedTotal = plan.floors.reduce((s, f) => s + countTool(f, tool), 0)
-    const stockLeft = (save.stock[tool] ?? 0) - usedTotal
-    left = Math.min(left, stockLeft)
-    return { perFloor, usedOnFloor, left: Math.max(0, left), stockLeft }
-  }
-  return { perFloor, usedOnFloor, left: Math.max(0, left) }
+  // a mochila renova a cada andar: o limite é só o número de slots com esse item
+  return { perFloor, usedOnFloor, left: Math.max(0, perFloor - usedOnFloor) }
 }
 
 /** Remove do plano tudo que a mochila/estoque atual não permite mais. */
@@ -220,6 +212,7 @@ export function simulate(plan: Plan): SimResult {
   const floors: FloorResult[] = plan.floors.map((f, fi) => {
     const hpStart = hp
     let floorTime = 0
+    const floorPotions: Partial<Record<PotionId, number>> = {}
     const steps = f.steps.map((s, si) => {
       const wave = waveById(plan, fi, s.waveId)
       const afterDeath = death !== null
@@ -235,7 +228,7 @@ export function simulate(plan: Plan): SimResult {
         } else if (isPotion(tool)) {
           healed = Math.max(0, Math.min(max, hp + ITEMS[tool].value) - hp)
           hp += healed
-          if (!afterDeath) potionsUsed[tool] = (potionsUsed[tool] ?? 0) + 1
+          if (!afterDeath) floorPotions[tool] = (floorPotions[tool] ?? 0) + 1
         } else if (isWeapon(tool)) {
           weaponDmg += ITEMS[tool].value
         }
@@ -263,6 +256,8 @@ export function simulate(plan: Plan): SimResult {
       return { wave, waveHp: total, weaponDmg, damage, hpBefore, items, hpAfter: hp, dead, afterDeath, time: stepTime }
     })
     totalTime += floorTime
+    // poção consumida = slot usado em algum andar (renova por andar, mas é gasta ao fim da run)
+    for (const [id, n] of Object.entries(floorPotions) as [PotionId, number][]) potionsUsed[id] = Math.max(potionsUsed[id] ?? 0, n)
     return { hpStart, hpEnd: hp, steps, time: floorTime }
   })
 
