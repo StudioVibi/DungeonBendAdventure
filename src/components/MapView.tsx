@@ -1,4 +1,6 @@
-import type { PointerEvent as RPointerEvent, RefObject } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type RefObject } from 'react'
+import { drawDuration, makeBurst, type Burst } from '../game/fx'
+import { TrailFx } from './TrailFx'
 import { HERO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon } from '../game/data'
 import { clusterLayout, edgeGeom, ICON_R, type EdgeGeom, type Pt } from '../game/geometry'
 import { floorMap, MAP_H, MAP_W, START, type Wave } from '../game/mapgen'
@@ -66,24 +68,30 @@ interface Props {
   onSvgPointerUp: (e: RPointerEvent) => void
 }
 
-function Trail({ d, ghost, highlight, dead }: { d: string; ghost?: boolean; highlight?: boolean; dead?: boolean }) {
+/** `draw`: duração (ms) da animação de construção, se este trecho acabou de ser criado. */
+function Trail({ d, ghost, highlight, dead, draw }: { d: string; ghost?: boolean; highlight?: boolean; dead?: boolean; draw?: number }) {
   return (
-    <g className={ghost ? 'trail ghost' : 'trail'} pointerEvents="none">
-      <path d={d} className="trail-bed" style={highlight ? { stroke: 'rgba(255, 214, 120, .55)', strokeWidth: 34 } : undefined} />
-      <path d={d} className="trail-edge" />
+    <g
+      className={`trail ${ghost ? 'ghost' : ''} ${draw ? 'drawing' : ''}`}
+      style={draw ? ({ '--dur': `${draw}ms` } as CSSProperties) : undefined}
+      pointerEvents="none"
+    >
+      <path d={d} pathLength={1} className="trail-bed" style={highlight ? { stroke: 'rgba(255, 214, 120, .55)', strokeWidth: 34 } : undefined} />
+      <path d={d} pathLength={1} className="trail-edge" />
       <path d={d} className={dead ? 'trail-dash dead' : 'trail-dash'} />
     </g>
   )
 }
 
-function Arrow({ e, ghost }: { e: EdgeGeom; ghost?: boolean }) {
+function Arrow({ e, ghost, draw }: { e: EdgeGeom; ghost?: boolean; draw?: number }) {
   const p = e.samples[e.samples.length - 1]
   const deg = (e.endAngle * 180) / Math.PI
   return (
     <path
       d="M-14 -10L2 0L-14 10"
       transform={`translate(${p.x} ${p.y}) rotate(${deg})`}
-      className="trail-arrow"
+      className={`trail-arrow ${draw ? 'drawing' : ''}`}
+      style={draw ? ({ '--dur': `${draw}ms` } as CSSProperties) : undefined}
       opacity={ghost ? 0.6 : 1}
       pointerEvents="none"
     />
@@ -99,6 +107,48 @@ export function MapView(p: Props) {
   const stepOf = new Map(floor.steps.map((s, i) => [s.waveId, i]))
   const ghostWaveStep = ghost?.kind === 'wave' ? ghost.stepIdx : -1
 
+  // ---- motion: construção de trilha ----
+  // chave de cada trecho = origem>destino; trechos novos (fora de prévias) se desenham e levantam partículas do bioma
+  const edgeKey = (i: number) => `${i === 0 ? 'start' : floor.steps[i - 1].waveId}>${floor.steps[i].waveId}`
+  const stairsKey = floor.stairs ? `${floor.steps.at(-1)?.waveId ?? 'start'}>stairs@${floor.stairs.x},${floor.stairs.y}` : null
+  const realEdges: { key: string; geom: EdgeGeom }[] = g.edges.map((e, i) => ({ key: edgeKey(i), geom: e }))
+  if (stairsKey && g.stairsEdge) realEdges.push({ key: stairsKey, geom: g.stairsEdge })
+  const keysSig = realEdges.map((e) => e.key).join('|')
+  const ctx = `${plan.dungeon}:${floorIdx}`
+  const seen = useRef<{ ctx: string; keys: Set<string> } | null>(null)
+  const [drawing, setDrawing] = useState<Record<string, number>>({})
+  const [bursts, setBursts] = useState<Burst[]>([])
+  const burstId = useRef(0)
+  const onBurstDone = useCallback((id: number) => setBursts((bs) => (bs.some((b) => b.id === id) ? bs.filter((b) => b.id !== id) : bs)), [])
+
+  useLayoutEffect(() => {
+    if (ghost) return // prévias não contam como construção
+    const prev = seen.current
+    seen.current = { ctx, keys: new Set(realEdges.map((e) => e.key)) }
+    if (!prev || prev.ctx !== ctx) return // troca de andar/dungeon: não anima o que já existia
+    const fresh = realEdges.filter((e) => !prev.keys.has(e.key))
+    if (!fresh.length) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    const add: Record<string, number> = {}
+    const newBursts: Burst[] = []
+    for (const e of fresh) {
+      const dur = drawDuration(e.geom.samples)
+      add[e.key] = dur
+      if (!reduce) newBursts.push(makeBurst(plan.dungeon, e.geom.samples, dur, ++burstId.current))
+    }
+    setDrawing((d) => ({ ...d, ...add }))
+    if (newBursts.length) setBursts((bs) => [...bs, ...newBursts])
+    const maxDur = Math.max(...Object.values(add))
+    setTimeout(() => {
+      setDrawing((d) => {
+        const n = { ...d }
+        for (const k of Object.keys(add)) if (n[k] === add[k]) delete n[k]
+        return n
+      })
+    }, maxDur + 400)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keysSig, ctx, !!ghost])
+
   return (
     <svg
       ref={p.svgRef}
@@ -113,14 +163,17 @@ export function MapView(p: Props) {
       {/* trilhas */}
       {g.edges.map((e, i) =>
         p.hiddenEdge === i ? null : (
-          <Trail key={'e' + i} d={e.d} ghost={i === ghostWaveStep} highlight={p.dropStep === i} dead={fr.steps[i]?.afterDeath} />
+          <Trail key={'e' + edgeKey(i)} d={e.d} ghost={i === ghostWaveStep} highlight={p.dropStep === i} dead={fr.steps[i]?.afterDeath} draw={drawing[edgeKey(i)]} />
         ),
       )}
-      {g.stairsEdge && p.hiddenEdge !== 'stairs' && <Trail d={g.stairsEdge.d} ghost={ghost?.kind === 'stairs'} />}
-      {g.edges.map((e, i) => (p.hiddenEdge === i ? null : <Arrow key={'a' + i} e={e} ghost={i === ghostWaveStep} />))}
+      {g.stairsEdge && p.hiddenEdge !== 'stairs' && (
+        <Trail key={'s' + stairsKey} d={g.stairsEdge.d} ghost={ghost?.kind === 'stairs'} draw={stairsKey ? drawing[stairsKey] : undefined} />
+      )}
+      {g.edges.map((e, i) => (p.hiddenEdge === i ? null : <Arrow key={'a' + edgeKey(i)} e={e} ghost={i === ghostWaveStep} draw={drawing[edgeKey(i)]} />))}
       {p.guides.map(([a, b], i) => (
         <line key={'g' + i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="link-line" pointerEvents="none" />
       ))}
+      <TrailFx bursts={bursts} onDone={onBurstDone} />
       {/* área de clique/arraste das trilhas (fica sob as ondas) */}
       {!ghost &&
         g.edges.map((e, i) => (

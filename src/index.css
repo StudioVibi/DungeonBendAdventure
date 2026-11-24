@@ -315,3 +315,10 @@ h3, h4 { margin: .4em 0; }
 .hospital-step { margin-left: 12px; color: #ff9a9a; font-weight: 800; border-left-color: #ff9a9a; font-variant-numeric: tabular-nums; }
 .link-btn { font: inherit; background: none; border: none; color: var(--muted); cursor: pointer; padding: 0 2px; }
 .link-btn:hover { color: var(--text); }
+
+/* motion: construção de trilha (o traçado cresce; tracejado e seta aparecem quando chega) */
+.trail.drawing .trail-bed, .trail.drawing .trail-edge { stroke-dasharray: 1 1; stroke-dashoffset: 1; animation: trail-draw var(--dur) cubic-bezier(.3, .7, .4, 1) forwards; }
+.trail.drawing .trail-dash { opacity: 0; animation: trail-fade .35s ease-out calc(var(--dur) * .8) forwards, march 1.2s linear infinite; }
+.trail-arrow.drawing { opacity: 0; transform-box: fill-box; animation: trail-fade .25s ease-out var(--dur) forwards; }
+@keyframes trail-draw { to { stroke-dashoffset: 0; } }
+@keyframes trail-fade { to { opacity: 1; } }
