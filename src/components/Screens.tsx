@@ -1,5 +1,4 @@
 import {
-  BANDAGE_ICON,
   DUNGEONS,
   HERO,
   ITEMS,
@@ -57,7 +56,6 @@ export function SelectScreen(p: {
         <div className={`hero-card ${p.hospitalUntil ? 'hospital' : ''}`}>
           <div className="hero-portrait">
             <HeroImg size={170} />
-            {p.hospitalUntil > 0 && <img className="bandage" src={BANDAGE_ICON} alt="Curativo" />}
           </div>
           <div className="hero-name">{HERO.name}</div>
           {p.hospitalUntil > 0 ? (
@@ -116,43 +114,51 @@ export function SelectScreen(p: {
             )
           })}
         </div>
+        {runs.length > 0 && (
+          <aside className="queue">
+            <h3>Fila</h3>
+            <ol className="cascade">
+              {runs.map((r, i) => {
+                const st = runStatus(r, now)
+                const d = DUNGEONS.find((x) => x.id === r.dungeon)!
+                const inHospital = st === 'done' && (r.hospitalUntil ?? 0) > now
+                return (
+                  <li key={r.id} className="cascade-step" style={{ marginLeft: Math.min(i, 4) * 12 }}>
+                    <div className={`qcard st-${st}`} style={{ borderLeftColor: d.accent }}>
+                      <div className="qc-top">
+                        <span className="qi-name" style={{ color: d.accent }}>{d.name}</span>
+                        <span className="qc-info">
+                          {r.result.alive ? <Gold value={r.result.gold} size={14} /> : <span className="bad">☠</span>}
+                        </span>
+                      </div>
+                      {st === 'running' && (
+                        <div className="qc-row">
+                          <span className="qi-state">⏳ {clock(r.endAt - now)}</span>
+                          <button className="link-btn" onClick={p.onSkip} title="Atalho de playtest">⏩</button>
+                        </div>
+                      )}
+                      {st === 'queued' && (
+                        <div className="qc-row">
+                          <span className="muted">em {clock(r.startAt - now)}</span>
+                          <button className="link-btn" onClick={() => p.onCancelQueued(r.id)} title="Tirar da fila">✕</button>
+                        </div>
+                      )}
+                      {st === 'done' && (
+                        <button className="btn primary small-btn qc-collect" onClick={() => p.onOpenReport(r.id)}>Coletar</button>
+                      )}
+                    </div>
+                    {r.hospitalUntil && (st !== 'done' || inHospital) && (
+                      <div className={`qcard hospital-step ${inHospital ? 'st-running' : ''}`}>
+                        🏥 {inHospital ? clock((r.hospitalUntil ?? 0) - now) : 'hospital 2h'}
+                      </div>
+                    )}
+                  </li>
+                )
+              })}
+            </ol>
+          </aside>
+        )}
       </div>
-
-      {runs.length > 0 && (
-        <section className="queue">
-          <h3>Fila de runs</h3>
-          <p className="muted small">As runs acontecem uma de cada vez; a próxima começa quando a anterior termina. A dungeon fica trancada até a run dela acabar.</p>
-          <ol className="queue-list">
-            {runs.map((r) => {
-              const st = runStatus(r, now)
-              const d = DUNGEONS.find((x) => x.id === r.dungeon)!
-              return (
-                <li key={r.id} className={`queue-item st-${st}`}>
-                  <span className="qi-name" style={{ color: d.accent }}>{d.name}</span>
-                  <span className="qi-info">
-                    {r.result.wavesCleared} ondas · {r.result.alive ? <Gold value={r.result.gold} size={16} /> : <span className="bad">☠ morre</span>}
-                  </span>
-                  {st === 'running' && (
-                    <>
-                      <span className="qi-state">⏳ {clock(r.endAt - now)}</span>
-                      <button className="btn ghost small-btn" onClick={p.onSkip} title="Atalho de playtest">⏩ terminar agora</button>
-                    </>
-                  )}
-                  {st === 'queued' && (
-                    <>
-                      <span className="qi-state muted">começa em {clock(r.startAt - now)}</span>
-                      <button className="btn ghost small-btn" onClick={() => p.onCancelQueued(r.id)}>Tirar da fila</button>
-                    </>
-                  )}
-                  {st === 'done' && (
-                    <button className="btn primary small-btn" onClick={() => p.onOpenReport(r.id)}>Coletar</button>
-                  )}
-                </li>
-              )
-            })}
-          </ol>
-        </section>
-      )}
     </div>
   )
 }

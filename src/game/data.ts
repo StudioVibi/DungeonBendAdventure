@@ -18,7 +18,6 @@ export const MAX_FLOORS = 15
 export const STARTING_GOLD = 60
 /** Herói morto fica hospitalizado por este tempo depois do fim da run. */
 export const HOSPITAL_MS = 2 * 60 * 60 * 1000
-export const BANDAGE_ICON = '/assets/generated/bandage.svg'
 
 export type MonsterId = 'rat' | 'bat' | 'spider' | 'slime_green' | 'plant' | 'plant_carnivore'
 
