@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DUNGEONS, HERO, ITEMS, MONSTERS, CAMPFIRE_ICON, STAIRS_ICON, GOLD_ICON } from '../game/data'
-import { HeroImg } from './ui'
 
 const IMAGES = [
   ...HERO.frames,
@@ -20,14 +19,6 @@ const AUDIO = [
   ...DUNGEONS.flatMap((d) => [`/assets/audio/sfx/construction-${d.id}.mp3`, `/assets/audio/sfx/impact-${d.id}.mp3`]),
 ]
 
-const TIPS = [
-  'Trilhas mais longas levam mais tempo — e têm mais encaixes para itens.',
-  'Uma arma na trilha da escada vale para a primeira onda do próximo andar.',
-  'Morrer na dungeon custa 2 horas de hospital.',
-  'A mochila renova a cada andar: cada slot pode ser usado de novo.',
-  'Monstros derrotados viram cartas para a coleção.',
-]
-
 function loadImage(src: string) {
   return new Promise<void>((res) => {
     const img = new Image()
@@ -41,11 +32,10 @@ const loadFile = (src: string) =>
     .then(() => undefined)
     .catch(() => undefined)
 
-/** Pré-carrega imagens e áudio; o clique final também destrava o som do navegador. */
+/** Pré-carrega imagens e áudio; qualquer clique ou tecla começa (e destrava o som do navegador). */
 export function Loading({ onDone }: { onDone: () => void }) {
   const total = IMAGES.length + AUDIO.length
   const [done, setDone] = useState(0)
-  const [tip] = useState(() => TIPS[Math.floor(Math.random() * TIPS.length)])
   const [leaving, setLeaving] = useState(false)
 
   useEffect(() => {
@@ -60,18 +50,23 @@ export function Loading({ onDone }: { onDone: () => void }) {
 
   const ready = done >= total
   const pct = Math.min(1, done / total)
-  const go = () => {
-    setLeaving(true)
-    setTimeout(onDone, 380)
-  }
-  // Enter também entra (sem foco automático no botão, que desenhava um contorno)
+  const started = useRef(false)
+  // pronto: qualquer clique ou tecla começa
   useEffect(() => {
     if (!ready) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Enter' && go()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready])
+    const go = () => {
+      if (started.current) return
+      started.current = true
+      setLeaving(true)
+      setTimeout(onDone, 380)
+    }
+    window.addEventListener('pointerdown', go)
+    window.addEventListener('keydown', go)
+    return () => {
+      window.removeEventListener('pointerdown', go)
+      window.removeEventListener('keydown', go)
+    }
+  }, [ready, onDone])
 
   return (
     <div className={`loading ${leaving ? 'leaving' : ''}`}>
@@ -79,12 +74,9 @@ export function Loading({ onDone }: { onDone: () => void }) {
         <span className="lt-main">DungeonBend</span>
         <span className="lt-sub">Adventure</span>
       </h1>
-      <div className="loading-card">
-        <HeroImg size={150} />
+      <div className="loading-foot">
         {ready ? (
-          <button className="loading-go" onClick={go}>
-            Entrar
-          </button>
+          <p className="loading-start">Clique ou aperte qualquer botão para começar</p>
         ) : (
           <>
             <div className="loading-bar">
@@ -93,7 +85,6 @@ export function Loading({ onDone }: { onDone: () => void }) {
             <div className="loading-pct">Carregando… {Math.round(pct * 100)}%</div>
           </>
         )}
-        <p className="loading-tip">{tip}</p>
       </div>
     </div>
   )
