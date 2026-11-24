@@ -64,6 +64,14 @@ export function Loading({ onDone }: { onDone: () => void }) {
     setLeaving(true)
     setTimeout(onDone, 380)
   }
+  // Enter também entra (sem foco automático no botão, que desenhava um contorno)
+  useEffect(() => {
+    if (!ready) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Enter' && go()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready])
 
   return (
     <div className={`loading ${leaving ? 'leaving' : ''}`}>
@@ -73,7 +81,7 @@ export function Loading({ onDone }: { onDone: () => void }) {
         </div>
         <HeroImg size={150} />
         {ready ? (
-          <button className="loading-go" onClick={go} autoFocus>
+          <button className="loading-go" onClick={go}>
             Entrar
           </button>
         ) : (

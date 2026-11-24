@@ -409,7 +409,7 @@ h3, h4 { margin: .4em 0; }
   text-shadow: 0 3px 0 #3a2010, 0 8px 24px #000a; animation: fade .4s, breathe 2.4s ease-in-out .4s infinite;
 }
 .loading-go:hover { color: var(--gold); }
-.loading-go:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 4px; border-radius: 8px; }
+.loading-go, .loading-go:focus, .loading-go:focus-visible { outline: none; box-shadow: none; -webkit-tap-highlight-color: transparent; }
 @keyframes breathe { 50% { opacity: .65; } }
 .loading-tip { max-width: 380px; color: #e6dccf; font-size: 14px; opacity: .85; margin: 0; }
 
