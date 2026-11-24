@@ -10,6 +10,9 @@ import {
   isWeapon,
   monsterGold,
   monsterHp,
+  TRAIL_CLASSES,
+  trailClass,
+  type TrailClass,
   type DungeonId,
   type ItemId,
   type MonsterId,
@@ -17,7 +20,7 @@ import {
   type ToolId,
   type WeaponId,
 } from './data'
-import { floorMap, type Wave } from './mapgen'
+import { floorMap, START, type Wave } from './mapgen'
 
 /** Itens colocados no trecho de trilha que leva até a onda. */
 export interface Step {
@@ -114,6 +117,65 @@ export function waveById(plan: Plan, floorIdx: number, waveId: string): Wave {
 
 export const waveHp = (w: Wave) => w.monsters.reduce((s, m) => s + monsterHp(m, w.level), 0)
 export const waveGold = (w: Wave) => w.monsters.reduce((s, m) => s + monsterGold(m, w.level), 0)
+
+// ---------- pathing: distância das trilhas ----------
+
+type P = { x: number; y: number }
+const dist = (a: P, b: P) => Math.hypot(a.x - b.x, a.y - b.y)
+
+/** Ponto de onde sai a trilha que leva ao passo `stepIdx` (ou à escada, se stepIdx = steps.length). */
+export function edgeFrom(plan: Plan, floorIdx: number, stepIdx: number): P {
+  const f = plan.floors[floorIdx]
+  return stepIdx === 0 ? START : waveById(plan, floorIdx, f.steps[stepIdx - 1].waveId)
+}
+
+/** Categoria da trilha que leva ao passo (longe demais conta como 5, mas não deveria existir). */
+export function stepTrail(plan: Plan, floorIdx: number, stepIdx: number): TrailClass {
+  const w = waveById(plan, floorIdx, plan.floors[floorIdx].steps[stepIdx].waveId)
+  return trailClass(dist(edgeFrom(plan, floorIdx, stepIdx), w)) ?? TRAIL_CLASSES[TRAIL_CLASSES.length - 1]
+}
+
+export function stairsTrail(plan: Plan, floorIdx: number): TrailClass | null {
+  const f = plan.floors[floorIdx]
+  if (!f.stairs) return null
+  return trailClass(dist(edgeFrom(plan, floorIdx, f.steps.length), f.stairs)) ?? TRAIL_CLASSES[TRAIL_CLASSES.length - 1]
+}
+
+/** Dá para ligar `from` a `to` com uma trilha (dentro da distância 5)? */
+export const reachable = (from: P, to: P) => trailClass(dist(from, to)) !== null
+
+/** Esta trilha ainda aceita o item? (encaixes por categoria de distância) */
+export function edgeAccepts(items: ToolId[], tool: ToolId, cls: TrailClass): boolean {
+  if (cls.shared) return items.length < cls.shared
+  const rest = items.filter((t) => t === 'campfire').length
+  const res = items.length - rest
+  return tool === 'campfire' ? rest < cls.rest : res < cls.resources
+}
+
+/** Explicação curta de por que a trilha não aceita mais o item. */
+export function edgeRule(cls: TrailClass): string {
+  if (cls.d === 1) return 'Distância 1 não permite recursos nem descanso.'
+  if (cls.shared) return 'Distância 2 permite 1 recurso OU 1 descanso.'
+  return `Distância ${cls.d} permite até ${cls.resources} ${cls.resources === 1 ? 'recurso' : 'recursos'} e 1 descanso.`
+}
+
+/** Remove itens que não cabem mais nas trilhas (ex.: trilha encurtou ao trocar a onda). */
+export function fitEdges(plan: Plan): { plan: Plan; removed: number } {
+  let removed = 0
+  const floors = plan.floors.map((f, fi) => ({
+    stairs: f.stairs,
+    steps: f.steps.map((s, si) => {
+      const cls = stepTrail(plan, fi, si)
+      const items: ToolId[] = []
+      for (const t of s.items) {
+        if (edgeAccepts(items, t, cls)) items.push(t)
+        else removed++
+      }
+      return { ...s, items }
+    }),
+  }))
+  return { plan: removed ? { ...plan, floors } : plan, removed }
+}
 
 // ---------- limites de uso ----------
 
@@ -232,6 +294,8 @@ export interface StepResult {
   dead: boolean
   /** o Alberto já tinha morrido antes desta onda */
   afterDeath: boolean
+  /** categoria de distância da trilha até esta onda */
+  trail: TrailClass
   time: number
 }
 
@@ -282,7 +346,8 @@ export function simulate(plan: Plan): SimResult {
       const afterDeath = death !== null
       const hpBefore = hp
       let weaponDmg = 0
-      let stepTime = 0
+      const trail = stepTrail(plan, fi, si)
+      let stepTime = trail.seconds
       const items: ItemResult[] = s.items.map((tool) => {
         let healed = 0
         if (tool === 'campfire') {
@@ -316,8 +381,14 @@ export function simulate(plan: Plan): SimResult {
         }
       }
       floorTime += stepTime
-      return { wave, waveHp: total, weaponDmg, damage, hpBefore, items, hpAfter: hp, dead, afterDeath, time: stepTime }
+      return { wave, waveHp: total, weaponDmg, damage, hpBefore, items, hpAfter: hp, dead, afterDeath, trail, time: stepTime }
     })
+    // trilha até a escada também leva tempo
+    const st = stairsTrail(plan, fi)
+    if (st) {
+      floorTime += st.seconds
+      if (death === null) runTime += st.seconds
+    }
     totalTime += floorTime
     // poção consumida = slot usado em algum andar (renova por andar, mas é gasta ao fim da run)
     for (const [id, n] of Object.entries(floorPotions) as [PotionId, number][]) potionsUsed[id] = Math.max(potionsUsed[id] ?? 0, n)

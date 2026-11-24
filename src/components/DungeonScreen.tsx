@@ -18,6 +18,12 @@ import {
   removeItem,
   removeStairs,
   replaceWave,
+  edgeAccepts,
+  edgeFrom,
+  edgeRule,
+  fitEdges,
+  reachable,
+  stepTrail,
   setStairs,
   simulate,
   truncateAfter,
@@ -65,6 +71,9 @@ export function DungeonScreen(props: Props) {
   planRef.current = plan
 
   const floor = plan.floors[floorIdx]
+  /** ponto de onde sai a próxima trilha (fim do caminho deste andar) */
+  const tailPt = edgeFrom(plan, floorIdx, floor.steps.length)
+  const FAR_HINT = 'Longe demais: só dá para conectar até a distância 5.'
   const dungeon = dungeonById(plan.dungeon)
   const sim = useMemo(() => simulate(plan), [plan])
 
@@ -82,7 +91,10 @@ export function DungeonScreen(props: Props) {
     if (!drag) return null
     const p = toSvg(drag.cx, drag.cy)
     if (!p || p.x < 0 || p.y < 0 || p.x > MAP_W || p.y > MAP_H) return null
-    if (drag.tool === 'stairs') return { kind: 'stairs' as const, pos: { x: Math.round(p.x), y: Math.round(p.y) } }
+    if (drag.tool === 'stairs') {
+      const pos = { x: Math.round(p.x), y: Math.round(p.y) }
+      return { kind: 'stairs' as const, pos, ok: reachable(tailPt, pos), reason: FAR_HINT }
+    }
     const g = floorGeometry(plan, floorIdx)
     let best = -1
     let bestD = 80
@@ -95,7 +107,11 @@ export function DungeonScreen(props: Props) {
         best = i
       }
     })
-    return best >= 0 ? { kind: 'edge' as const, stepIdx: best } : null
+    if (best < 0) return null
+    const cls = stepTrail(plan, floorIdx, best)
+    const ok = edgeAccepts(floor.steps[best].items, drag.tool, cls)
+    return { kind: 'edge' as const, stepIdx: best, ok, reason: edgeRule(cls) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag, plan, floorIdx, floor.steps, toSvg])
 
   // ---- prévia (plano hipotético para feedback instantâneo) ----
@@ -103,30 +119,46 @@ export function DungeonScreen(props: Props) {
   const edgeCandidate = useMemo(() => {
     if (!edgeDrag?.moved || edgeDrag.edge === 'stairs') return null
     const p = edgeDrag.pointer
+    const i = edgeDrag.edge
+    const prev = edgeFrom(plan, floorIdx, i)
+    const nextStep = floor.steps[i + 1]
+    const next = nextStep ? floorGeometry(plan, floorIdx).waves.find((w) => w.id === nextStep.waveId)! : floor.stairs
     const w = floorGeometry(plan, floorIdx).waves.find(
-      (wv) => !floor.steps.some((s) => s.waveId === wv.id) && Math.hypot(p.x - wv.x, p.y - wv.y) < clusterLayout(wv).radius + 6,
+      (wv) =>
+        !floor.steps.some((s) => s.waveId === wv.id) &&
+        Math.hypot(p.x - wv.x, p.y - wv.y) < clusterLayout(wv).radius + 6 &&
+        reachable(prev, wv) &&
+        (!next || reachable(wv, next)),
     )
     return w?.id ?? null
   }, [edgeDrag, plan, floorIdx, floor.steps])
 
-  const hoverAppendable = hoverWaveId && !linking && !drag && !edgeDrag && !floor.steps.some((s) => s.waveId === hoverWaveId) ? hoverWaveId : null
-  const preview = useMemo((): { plan: Plan; ghost: Ghost } | null => {
+  const hoverFree = hoverWaveId && !linking && !drag && !edgeDrag && !floor.steps.some((s) => s.waveId === hoverWaveId) ? hoverWaveId : null
+  const hoverWave = hoverFree ? floorGeometry(plan, floorIdx).waves.find((w) => w.id === hoverFree) : undefined
+  const hoverAppendable = hoverWave && reachable(tailPt, hoverWave) ? hoverWave.id : null
+  const tooFarWaveId = hoverWave && !hoverAppendable ? hoverWave.id : null
+  const preview = useMemo((): { plan: Plan; ghost: Ghost; removed?: number } | null => {
     if (edgeDrag?.moved) {
       if (edgeDrag.edge === 'stairs') {
         const pos = { x: Math.round(edgeDrag.pointer.x), y: Math.round(edgeDrag.pointer.y) }
+        if (!reachable(tailPt, pos)) return null
         return { plan: setStairs(plan, floorIdx, pos), ghost: { kind: 'stairs' } }
       }
-      if (edgeCandidate) return { plan: replaceWave(plan, floorIdx, edgeDrag.edge, edgeCandidate), ghost: { kind: 'wave', stepIdx: edgeDrag.edge } }
+      if (edgeCandidate) {
+        // a troca pode mudar a distância das trilhas: itens que não cabem mais saem
+        const fitted = fitEdges(replaceWave(plan, floorIdx, edgeDrag.edge, edgeCandidate))
+        return { plan: fitted.plan, ghost: { kind: 'wave', stepIdx: edgeDrag.edge }, removed: fitted.removed }
+      }
       return null
     }
-    if (dropTarget?.kind === 'edge' && drag && drag.tool !== 'stairs') {
+    if (dropTarget?.kind === 'edge' && dropTarget.ok && drag && drag.tool !== 'stairs') {
       const p2 = addItem(plan, floorIdx, dropTarget.stepIdx, drag.tool)
       return { plan: p2, ghost: { kind: 'item', stepIdx: dropTarget.stepIdx, itemIdx: p2.floors[floorIdx].steps[dropTarget.stepIdx].items.length - 1 } }
     }
-    if (dropTarget?.kind === 'stairs') return { plan: setStairs(plan, floorIdx, dropTarget.pos), ghost: { kind: 'stairs' } }
+    if (dropTarget?.kind === 'stairs' && dropTarget.ok) return { plan: setStairs(plan, floorIdx, dropTarget.pos), ghost: { kind: 'stairs' } }
     if (hoverAppendable) return { plan: appendWave(plan, floorIdx, hoverAppendable), ghost: { kind: 'wave', stepIdx: floor.steps.length } }
     return null
-  }, [edgeDrag, edgeCandidate, dropTarget, drag, plan, floorIdx, hoverAppendable, floor.steps.length])
+  }, [edgeDrag, edgeCandidate, dropTarget, drag, plan, floorIdx, hoverAppendable, floor.steps.length, tailPt])
   const previewSim = useMemo(() => (preview ? simulate(preview.plan) : null), [preview])
   const shown = previewSim ?? sim
 
@@ -141,8 +173,9 @@ export function DungeonScreen(props: Props) {
     const up = () => {
       const t = dropRef.current
       const cur = planRef.current
-      if (t?.kind === 'edge' && dragTool !== 'stairs') commit(addItem(cur, floorIdx, t.stepIdx, dragTool))
-      if (t?.kind === 'stairs') {
+      if (t && !t.ok) flashHint(t.reason)
+      else if (t?.kind === 'edge' && dragTool !== 'stairs') commit(addItem(cur, floorIdx, t.stepIdx, dragTool))
+      else if (t?.kind === 'stairs') {
         commit(setStairs(cur, floorIdx, t.pos))
         setFloorIdx(floorIdx + 1)
       }
@@ -191,8 +224,9 @@ export function DungeonScreen(props: Props) {
     const cur = planRef.current
     const f = cur.floors[floorIdx]
     const g = floorGeometry(cur, floorIdx)
+    const from = edgeFrom(cur, floorIdx, f.steps.length)
     const hit = g.waves.find(
-      (w) => !f.steps.some((s) => s.waveId === w.id) && Math.hypot(p.x - w.x, p.y - w.y) < clusterLayout(w).radius,
+      (w) => !f.steps.some((s) => s.waveId === w.id) && Math.hypot(p.x - w.x, p.y - w.y) < clusterLayout(w).radius && reachable(from, w),
     )
     if (hit) {
       const next = appendWave(cur, floorIdx, hit.id)
@@ -212,7 +246,10 @@ export function DungeonScreen(props: Props) {
         else flashHint('Só a última trilha do andar pode ser apagada. Arraste uma trilha para trocar a onda.')
         return
       }
-      if (preview) commit(preview.plan)
+      if (preview) {
+        commit(preview.plan)
+        if (preview.removed) flashHint(`A distância mudou: ${preview.removed} ${preview.removed === 1 ? 'item saiu' : 'itens saíram'} da trilha.`)
+      } else if (edge === 'stairs') flashHint(FAR_HINT)
       return
     }
     if (!linking) return
@@ -223,7 +260,11 @@ export function DungeonScreen(props: Props) {
 
   const onWaveClick = (waveId: string) => {
     const idx = floor.steps.findIndex((s) => s.waveId === waveId)
-    if (idx < 0) commit(appendWave(plan, floorIdx, waveId))
+    if (idx < 0) {
+      const w = floorGeometry(plan, floorIdx).waves.find((x) => x.id === waveId)!
+      if (reachable(tailPt, w)) commit(appendWave(plan, floorIdx, waveId))
+      else flashHint(FAR_HINT)
+    }
     else if (idx < floor.steps.length - 1) commit(truncateAfter(plan, floorIdx, idx))
     setHoverWaveId(null)
   }
@@ -302,6 +343,9 @@ export function DungeonScreen(props: Props) {
           floorIdx={floorIdx}
           ghost={preview?.ghost ?? null}
           dropStep={dropTarget?.kind === 'edge' ? dropTarget.stepIdx : null}
+          dropBlocked={!!dropTarget && !dropTarget.ok}
+          tooFarWaveId={tooFarWaveId}
+          tailPt={tailPt}
           svgRef={svgRef}
           hoverWaveId={hoverWaveId}
           guides={guides}
@@ -473,7 +517,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
         </div>
       </div>
       <div className="bag-help">
-        Arraste itens para a trilha · clique num item da trilha para remover · clique numa onda já conectada para cortar a trilha ali
+        Trilhas D1–D5: quanto mais longe, mais tempo e mais encaixes (D1 nenhum · D2 1 recurso ou descanso · D3 1+1 · D4 2+1 · D5 3+1) · arraste itens para os encaixes
       </div>
       <div className="bag-actions">
         <button className="btn ghost" disabled={!p.canUndo} onClick={p.undo} title="Ctrl/Cmd+Z">↶ Desfazer</button>

@@ -322,3 +322,17 @@ h3, h4 { margin: .4em 0; }
 .trail-arrow.drawing { opacity: 0; transform-box: fill-box; animation: trail-fade .25s ease-out var(--dur) forwards; }
 @keyframes trail-draw { to { stroke-dashoffset: 0; } }
 @keyframes trail-fade { to { opacity: 1; } }
+
+/* pathing: distância e encaixes */
+.dist-badge rect { fill: rgba(22, 16, 12, .88); stroke: #f6e3b4; stroke-width: 2; }
+.dist-d { fill: #f6e3b4; font-weight: 900; font-size: 13px; }
+.dist-s { fill: #cbbd9f; font-weight: 700; font-size: 11px; }
+.dist-badge.d1 rect { stroke: #9c9184; }
+.dist-badge.d5 rect { stroke: var(--accent); }
+.socket circle { fill: rgba(20, 14, 10, .55); stroke: rgba(246, 227, 180, .7); stroke-width: 2.5; stroke-dasharray: 5 4; }
+.socket-plus { stroke: rgba(246, 227, 180, .8); stroke-width: 3; stroke-linecap: round; }
+.socket.open circle { stroke: var(--gold); fill: rgba(255, 210, 90, .25); stroke-dasharray: none; }
+.socket.blocked circle { stroke: var(--bad); }
+.wave.too-far .wave-halo { fill: rgba(255, 80, 80, .12); stroke: rgba(255, 107, 107, .85); stroke-dasharray: 6 6; }
+.wave.too-far { cursor: not-allowed; }
+.link-line.far { stroke: var(--bad); opacity: .7; }

@@ -12,6 +12,42 @@ export const SECONDS_PER_WAVE_HP = 2
 /** Segundos de descanso por ponto de vida curado na fogueira. */
 export const SECONDS_PER_REST_HP = 2
 export const CAMPFIRES_PER_FLOOR = 1
+
+// ---------- Pathing: distância das trilhas ----------
+/** Distância (centro a centro, unidades do mapa) onde começa a faixa da distância 1. */
+export const TRAIL_MIN = 200
+/** Largura fixa de cada faixa de distância. */
+export const TRAIL_BAND = 170
+
+export interface TrailClass {
+  /** 1..5 */
+  d: number
+  /** segundos que a trilha soma à run */
+  seconds: number
+  /** recursos (poções/armas) permitidos */
+  resources: number
+  /** descansos (fogueira) permitidos */
+  rest: number
+  /** encaixe único que aceita 1 recurso OU 1 descanso (distância 2) */
+  shared: number
+}
+
+export const TRAIL_CLASSES: TrailClass[] = [
+  { d: 1, seconds: 10, resources: 0, rest: 0, shared: 0 },
+  { d: 2, seconds: 20, resources: 0, rest: 0, shared: 1 },
+  { d: 3, seconds: 30, resources: 1, rest: 1, shared: 0 },
+  { d: 4, seconds: 40, resources: 2, rest: 1, shared: 0 },
+  { d: 5, seconds: 50, resources: 3, rest: 1, shared: 0 },
+]
+/** Distância máxima conectável (fim da faixa 5). */
+export const TRAIL_MAX = TRAIL_MIN + TRAIL_BAND * TRAIL_CLASSES.length
+
+/** Categoria de distância de uma trilha, ou null se longe demais. */
+export function trailClass(length: number): TrailClass | null {
+  if (length > TRAIL_MAX) return null
+  const i = Math.max(0, Math.floor((length - TRAIL_MIN) / TRAIL_BAND))
+  return TRAIL_CLASSES[Math.min(i, TRAIL_CLASSES.length - 1)]
+}
 export const POTION_SLOTS = 3
 export const WEAPON_SLOTS = 2
 export const MAX_FLOORS = 15

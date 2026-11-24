@@ -1,10 +1,10 @@
 import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type RefObject } from 'react'
 import { drawDuration, makeBurst, type Burst } from '../game/fx'
 import { TrailFx } from './TrailFx'
-import { HERO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon } from '../game/data'
+import { CAMPFIRE_ICON, HERO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
 import { clusterLayout, edgeGeom, ICON_R, type EdgeGeom, type Pt } from '../game/geometry'
 import { floorMap, MAP_H, MAP_W, START, type Wave } from '../game/mapgen'
-import { waveById, waveHp, type Plan, type SimResult } from '../game/plan'
+import { stairsTrail, waveById, waveHp, type Plan, type SimResult } from '../game/plan'
 import { HeartBadge, MonsterHead, useFrame } from './ui'
 
 /** Sprite animado separado para não re-renderizar o mapa inteiro a cada frame. */
@@ -52,6 +52,12 @@ interface Props {
   floorIdx: number
   ghost: Ghost | null
   dropStep: number | null
+  /** o trecho sob o item arrastado não aceita esse item */
+  dropBlocked: boolean
+  /** onda sob o mouse que está longe demais para conectar */
+  tooFarWaveId: string | null
+  /** de onde sai a próxima trilha */
+  tailPt: Pt
   svgRef: RefObject<SVGSVGElement | null>
   hoverWaveId: string | null
   /** linhas-guia durante arrastos (conectar / mudar caminho) */
@@ -69,14 +75,14 @@ interface Props {
 }
 
 /** `draw`: duração (ms) da animação de construção, se este trecho acabou de ser criado. */
-function Trail({ d, ghost, highlight, dead, draw }: { d: string; ghost?: boolean; highlight?: boolean; dead?: boolean; draw?: number }) {
+function Trail({ d, ghost, highlight, dead, draw }: { d: string; ghost?: boolean; highlight?: 'good' | 'bad'; dead?: boolean; draw?: number }) {
   return (
     <g
       className={`trail ${ghost ? 'ghost' : ''} ${draw ? 'drawing' : ''}`}
       style={draw ? ({ '--dur': `${draw}ms` } as CSSProperties) : undefined}
       pointerEvents="none"
     >
-      <path d={d} pathLength={1} className="trail-bed" style={highlight ? { stroke: 'rgba(255, 214, 120, .55)', strokeWidth: 34 } : undefined} />
+      <path d={d} pathLength={1} className="trail-bed" style={highlight ? { stroke: highlight === 'bad' ? 'rgba(255, 90, 90, .5)' : 'rgba(255, 214, 120, .55)', strokeWidth: 34 } : undefined} />
       <path d={d} pathLength={1} className="trail-edge" />
       <path d={d} className={dead ? 'trail-dash dead' : 'trail-dash'} />
     </g>
@@ -95,6 +101,40 @@ function Arrow({ e, ghost, draw }: { e: EdgeGeom; ghost?: boolean; draw?: number
       opacity={ghost ? 0.6 : 1}
       pointerEvents="none"
     />
+  )
+}
+
+type SocketKind = 'any' | 'res' | 'rest'
+
+/** Encaixes de uma trilha e em qual encaixe cada item fica. */
+function socketLayout(items: ToolId[], cls: TrailClass) {
+  const kinds: SocketKind[] = cls.shared ? ['any'] : [...Array<SocketKind>(cls.resources).fill('res'), ...Array<SocketKind>(cls.rest).fill('rest')]
+  const used = kinds.map(() => false)
+  const slotOf = items.map((t) => {
+    const want: SocketKind = cls.shared ? 'any' : t === 'campfire' ? 'rest' : 'res'
+    let k = kinds.findIndex((kind, i) => kind === want && !used[i])
+    if (k < 0) {
+      kinds.push(want) // não deveria acontecer (fitEdges), mas não some com o item
+      used.push(false)
+      k = kinds.length - 1
+    }
+    used[k] = true
+    return k
+  })
+  return { kinds, slotOf }
+}
+
+const socketT = (e: EdgeGeom, k: number, n: number) => e.t0 + (e.t1 - e.t0) * (0.34 + (0.54 * (k + 0.5)) / n)
+
+/** Marco de distância da trilha (D1..D5 e o tempo que soma). */
+function DistanceBadge({ e, cls, ghost }: { e: EdgeGeom; cls: TrailClass; ghost?: boolean }) {
+  const pt = e.at(e.t0 + (e.t1 - e.t0) * 0.15)
+  return (
+    <g transform={`translate(${pt.x} ${pt.y})`} className={`dist-badge d${cls.d}`} opacity={ghost ? 0.85 : 1} pointerEvents="none">
+      <rect x={-30} y={-12} width={60} height={24} rx={12} />
+      <text x={-14} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-d">D{cls.d}</text>
+      <text x={13} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-s">{cls.seconds}s</text>
+    </g>
   )
 }
 
@@ -163,13 +203,17 @@ export function MapView(p: Props) {
       {/* trilhas */}
       {g.edges.map((e, i) =>
         p.hiddenEdge === i ? null : (
-          <Trail key={'e' + edgeKey(i)} d={e.d} ghost={i === ghostWaveStep} highlight={p.dropStep === i} dead={fr.steps[i]?.afterDeath} draw={drawing[edgeKey(i)]} />
+          <Trail key={'e' + edgeKey(i)} d={e.d} ghost={i === ghostWaveStep} highlight={p.dropStep === i ? (p.dropBlocked ? 'bad' : 'good') : undefined} dead={fr.steps[i]?.afterDeath} draw={drawing[edgeKey(i)]} />
         ),
       )}
       {g.stairsEdge && p.hiddenEdge !== 'stairs' && (
         <Trail key={'s' + stairsKey} d={g.stairsEdge.d} ghost={ghost?.kind === 'stairs'} draw={stairsKey ? drawing[stairsKey] : undefined} />
       )}
       {g.edges.map((e, i) => (p.hiddenEdge === i ? null : <Arrow key={'a' + edgeKey(i)} e={e} ghost={i === ghostWaveStep} draw={drawing[edgeKey(i)]} />))}
+      {p.tooFarWaveId && (() => {
+        const w = g.waves.find((x) => x.id === p.tooFarWaveId)!
+        return <line x1={p.tailPt.x} y1={p.tailPt.y} x2={w.x} y2={w.y} className="link-line far" pointerEvents="none" />
+      })()}
       {p.guides.map(([a, b], i) => (
         <line key={'g' + i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="link-line" pointerEvents="none" />
       ))}
@@ -201,7 +245,7 @@ export function MapView(p: Props) {
         return (
           <g
             key={w.id}
-            className={`wave ${inPath && !isGhost ? 'in-path' : ''} ${hovered ? 'hovered' : ''}`}
+            className={`wave ${inPath && !isGhost ? 'in-path' : ''} ${hovered ? 'hovered' : ''} ${p.tooFarWaveId === w.id ? 'too-far' : ''}`}
             onPointerEnter={() => p.onHoverWave(w.id)}
             onPointerLeave={() => p.onHoverWave(null)}
             onClick={() => p.onWaveClick(w.id)}
@@ -230,6 +274,11 @@ export function MapView(p: Props) {
               </g>
             )}
             {r && <HeartBadge x={w.x + radius * 0.85} y={w.y - radius * 0.8} hp={r.hpAfter} ghost={isGhost} grey={r.afterDeath} />}
+            {p.tooFarWaveId === w.id && (
+              <text x={w.x} y={w.y - radius - 14} textAnchor="middle" className="death-text" pointerEvents="none">
+                longe demais
+              </text>
+            )}
             {r?.dead && !r.afterDeath && (
               <text x={w.x} y={w.y - radius - 14} textAnchor="middle" className="death-text" pointerEvents="none">
                 ☠ morre aqui
@@ -239,45 +288,79 @@ export function MapView(p: Props) {
         )
       })}
 
-      {/* itens nas trilhas */}
-      {floor.steps.map((s, si) =>
-        s.items.map((tool, ii) => {
-          const e = g.edges[si]
-          const n = s.items.length
-          const t = e.t0 + (e.t1 - e.t0) * (0.22 + (0.56 * (ii + 1)) / (n + 1))
-          const pt = e.at(t)
-          const res = fr.steps[si]?.items[ii]
-          const isGhost = ghost?.kind === 'item' && ghost.stepIdx === si && ghost.itemIdx === ii
-          return (
-            <g
-              key={`${si}-${ii}`}
-              className={`path-item ${isGhost ? 'ghost' : ''}`}
-              transform={`translate(${pt.x} ${pt.y})`}
-              onClick={(ev) => {
-                ev.stopPropagation()
-                p.onItemClick(si, ii)
-              }}
-            >
-              <title>Clique para remover</title>
-              <circle r={24} className="item-disc" />
-              <image href={toolIcon(tool)} x={-22} y={-26} width={44} height={50} />
-              {isWeapon(tool) ? (
-                <g transform="translate(0 34)">
-                  <rect x={-20} y={-10} width={40} height={20} rx={10} className="weapon-pill" />
-                  <text y={1} textAnchor="middle" dominantBaseline="middle" className="weapon-text">⚔{ITEMS[tool].value}</text>
+      {/* encaixes e itens nas trilhas (quantidade depende da distância) */}
+      {floor.steps.map((s, si) => {
+        const e = g.edges[si]
+        const r = fr.steps[si]
+        if (!r || p.hiddenEdge === si) return null
+        const { kinds, slotOf } = socketLayout(s.items, r.trail)
+        const filled = new Set(slotOf)
+        const isDrop = p.dropStep === si
+        return (
+          <g key={'sk' + si}>
+            <DistanceBadge e={e} cls={r.trail} ghost={si === ghostWaveStep} />
+            {kinds.map((kind, k) =>
+              filled.has(k) ? null : (
+                <g
+                  key={k}
+                  transform={`translate(${e.at(socketT(e, k, kinds.length)).x} ${e.at(socketT(e, k, kinds.length)).y})`}
+                  className={`socket ${isDrop ? (p.dropBlocked ? 'blocked' : 'open') : ''}`}
+                  pointerEvents="none"
+                >
+                  <circle r={17} />
+                  {kind === 'rest' ? (
+                    <image href={CAMPFIRE_ICON} x={-12} y={-12} width={24} height={24} opacity={0.45} />
+                  ) : kind === 'any' ? (
+                    <>
+                      <path d="M-6 0h12M0 -6v12" className="socket-plus" />
+                      <image href={CAMPFIRE_ICON} x={4} y={2} width={13} height={13} opacity={0.5} />
+                    </>
+                  ) : (
+                    <path d="M-6 0h12M0 -6v12" className="socket-plus" />
+                  )}
                 </g>
-              ) : (
-                res && (
-                  <>
-                    <text y={-30} textAnchor="middle" className="heal-text">+{res.healed}</text>
-                    <HeartBadge x={0} y={38} hp={res.hp} size={26} grey={fr.steps[si].afterDeath} />
-                  </>
-                )
-              )}
-            </g>
-          )
-        }),
-      )}
+              ),
+            )}
+            {s.items.map((tool, ii) => {
+              const pt = e.at(socketT(e, slotOf[ii], kinds.length))
+              const res = r.items[ii]
+              const isGhost = ghost?.kind === 'item' && ghost.stepIdx === si && ghost.itemIdx === ii
+              return (
+                <g
+                  key={`${si}-${ii}`}
+                  className={`path-item ${isGhost ? 'ghost' : ''}`}
+                  transform={`translate(${pt.x} ${pt.y})`}
+                  onClick={(ev) => {
+                    ev.stopPropagation()
+                    p.onItemClick(si, ii)
+                  }}
+                >
+                  <title>Clique para remover</title>
+                  <circle r={24} className="item-disc" />
+                  <image href={toolIcon(tool)} x={-22} y={-26} width={44} height={50} />
+                  {isWeapon(tool) ? (
+                    <g transform="translate(0 34)">
+                      <rect x={-20} y={-10} width={40} height={20} rx={10} className="weapon-pill" />
+                      <text y={1} textAnchor="middle" dominantBaseline="middle" className="weapon-text">⚔{ITEMS[tool].value}</text>
+                    </g>
+                  ) : (
+                    res && (
+                      <>
+                        <text y={-30} textAnchor="middle" className="heal-text">+{res.healed}</text>
+                        <HeartBadge x={0} y={38} hp={res.hp} size={26} grey={r.afterDeath} />
+                      </>
+                    )
+                  )}
+                </g>
+              )
+            })}
+          </g>
+        )
+      })}
+      {g.stairsEdge && p.hiddenEdge !== 'stairs' && (() => {
+        const cls = stairsTrail(plan, floorIdx)
+        return cls ? <DistanceBadge e={g.stairsEdge} cls={cls} ghost={ghost?.kind === 'stairs'} /> : null
+      })()}
 
       {/* início do andar */}
       <g className="start-node" onPointerDown={floor.steps.length === 0 ? p.onTailPointerDown : undefined}>
