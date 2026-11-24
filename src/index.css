@@ -344,3 +344,5 @@ h3, h4 { margin: .4em 0; }
 /* arte dos itens fica 22% abaixo do centro do canvas: sobe para centralizar */
 .item-art { transform: translateY(-22%); }
 .drag-ghost.item-art { transform: translate(-50%, -82%) rotate(-8deg); }
+
+.sound-toggle { padding: 6px 10px; font-size: 16px; line-height: 1; }

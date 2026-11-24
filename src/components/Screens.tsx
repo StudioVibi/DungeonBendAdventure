@@ -13,7 +13,7 @@ import {
   type WeaponId,
 } from '../game/data'
 import { formatTime, mergeCards, runStatus, type Run, type Save, type SimResult } from '../game/plan'
-import { Gold, HeartIcon, HeroImg, MonsterHeadBadge } from './ui'
+import { Gold, HeartIcon, HeroImg, MonsterHeadBadge, SoundToggle } from './ui'
 
 // ---------------- Seleção de dungeon ----------------
 
@@ -49,6 +49,7 @@ export function SelectScreen(p: {
         <h1 className="logo">DungeonBend <span>Adventure</span></h1>
         <div className="head-actions">
           <Gold value={save.gold} size={22} />
+          <SoundToggle />
           <button className="btn" onClick={p.onCollection}>Coleção</button>
           <button className="btn" onClick={p.onShop}>Loja</button>
         </div>
@@ -98,6 +99,7 @@ export function SelectScreen(p: {
                         role="button"
                         tabIndex={0}
                         className="dc-discard"
+                        data-sfx="back"
                         title="Descartar a trilha salva"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -159,7 +161,7 @@ export function SelectScreen(p: {
                       {st === 'queued' && (
                         <div className="qc-row">
                           <span className="muted">em {clock(r.startAt - now)}</span>
-                          <button className="link-btn" onClick={() => p.onCancelQueued(r.id)} title="Tirar da fila">✕</button>
+                          <button className="link-btn" data-sfx="back" onClick={() => p.onCancelQueued(r.id)} title="Tirar da fila">✕</button>
                         </div>
                       )}
                       {st === 'done' && (
@@ -230,7 +232,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
     const it = ITEMS[id]
     const afford = save.gold >= it.price
     return (
-      <button key={id} className={`shop-card ${afford ? '' : 'poor'}`} onClick={() => buy(id)} disabled={!afford}>
+      <button key={id} data-sfx="buy" className={`shop-card ${afford ? '' : 'poor'}`} onClick={() => buy(id)} disabled={!afford}>
         <span className={`sc-val ${it.kind === 'potion' ? 'heal' : 'dmg'}`}>{it.kind === 'potion' ? `+${it.value}` : it.value}</span>
         <img className="item-art" src={it.icon} alt="" />
         <span className="sc-name">{it.name}</span>
@@ -252,7 +254,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
   return (
     <div className="screen shop-screen">
       <header className="screen-head">
-        <button className="btn ghost" onClick={p.onBack}>← {p.backLabel}</button>
+        <button className="btn ghost" data-sfx="back" onClick={p.onBack}>← {p.backLabel}</button>
         <h2>Loja</h2>
         <Gold value={save.gold} size={24} />
       </header>
@@ -297,7 +299,7 @@ export function CollectionScreen(p: { save: Save; onBack: () => void; backLabel:
   return (
     <div className="screen collection-screen">
       <header className="screen-head">
-        <button className="btn ghost" onClick={p.onBack}>← {p.backLabel}</button>
+        <button className="btn ghost" data-sfx="back" onClick={p.onBack}>← {p.backLabel}</button>
         <h2>Coleção de cartas <small className="muted">({total})</small></h2>
         <button
           className="btn ghost danger"
@@ -392,7 +394,7 @@ export function ReportModal(p: {
           </p>
         )}
         <div className="modal-actions">
-          <button className="btn ghost" onClick={p.onCancel}>{preview ? 'Voltar ao mapa' : 'Fechar'}</button>
+          <button className="btn ghost" data-sfx="back" onClick={p.onCancel}>{preview ? 'Voltar ao mapa' : 'Fechar'}</button>
           <button className="btn primary" onClick={p.onConfirm}>
             {preview ? (p.startsIn > 0 ? 'Colocar na fila' : 'Iniciar run') : 'Coletar'}
           </button>

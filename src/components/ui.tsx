@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { isMuted, onMuteChange, setMuted } from '../game/audio'
 import { GOLD_ICON, HERO, MONSTERS, type MonsterId } from '../game/data'
 
 const SPRITE_RATIO = 600 / 520
@@ -87,3 +88,13 @@ HERO.frames.forEach((src) => {
   const i = new Image()
   i.src = src
 })
+
+/** Botão de som (mudo salvo entre visitas). */
+export function SoundToggle() {
+  const muted = useSyncExternalStore(onMuteChange, isMuted)
+  return (
+    <button className="btn ghost sound-toggle" data-sfx="none" onClick={() => setMuted(!muted)} title={muted ? 'Ligar som' : 'Desligar som'}>
+      {muted ? '🔇' : '🔊'}
+    </button>
+  )
+}

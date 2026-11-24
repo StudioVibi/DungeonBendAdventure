@@ -19,6 +19,7 @@ import {
   type SimResult,
 } from './game/plan'
 import { normalizeLoadout, useSave } from './game/store'
+import { play, setMusic, type SoundName } from './game/audio'
 
 type Screen = 'select' | 'dungeon' | 'shop' | 'collection'
 type ReportState = { mode: 'preview'; sim: SimResult } | { mode: 'result'; runId: string }
@@ -200,6 +201,21 @@ export default function App() {
   useEffect(() => {
     if (screen === 'dungeon' && !plan) setScreen('select')
   }, [screen, plan])
+
+  // música: menu (trilha) fora da dungeon, trilha2 dentro
+  useEffect(() => setMusic(screen === 'dungeon' ? 'trilha2' : 'trilha'), [screen])
+
+  // sons de botão: data-sfx="confirm|back|buy|none"; botões sem marcação tocam confirm
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const el = (e.target as Element).closest<HTMLElement>('button, [data-sfx]')
+      if (!el || (el as HTMLButtonElement).disabled) return
+      const sfx = el.dataset.sfx ?? 'confirm'
+      if (sfx !== 'none') play(sfx as SoundName)
+    }
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
+  }, [])
 
   const backLabel = prevScreen === 'dungeon' && plan ? 'Voltar à dungeon' : 'Voltar'
   const back = () => (prevScreen === 'dungeon' && active && plan ? openDungeon(active) : setScreen('select'))

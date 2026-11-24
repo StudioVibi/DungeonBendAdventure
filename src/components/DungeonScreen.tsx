@@ -32,7 +32,7 @@ import {
   type Save,
 } from '../game/plan'
 import { MapView, floorGeometry, type Ghost } from './MapView'
-import { Gold, HeartIcon } from './ui'
+import { Gold, HeartIcon, SoundToggle } from './ui'
 
 type DragTool = ToolId | 'stairs'
 
@@ -326,6 +326,7 @@ export function DungeonScreen(props: Props) {
               {closable && (
                 <span
                   className="tab-close"
+                  data-sfx="back"
                   title="Fechar este andar (remove a escada do andar anterior)"
                   onClick={(e) => {
                     e.stopPropagation()
@@ -407,7 +408,7 @@ function Hud(p: Props & { sim: ReturnType<typeof simulate>; shown: ReturnType<ty
   return (
     <header className="hud">
       <div className="hud-left">
-        <button className="btn ghost" onClick={p.onLeave}>← Dungeons</button>
+        <button className="btn ghost" data-sfx="back" onClick={p.onLeave}>← Dungeons</button>
         <div className="hud-title">{p.dungeonName}</div>
       </div>
 
@@ -456,6 +457,7 @@ function Hud(p: Props & { sim: ReturnType<typeof simulate>; shown: ReturnType<ty
         <div className="wallet" title="Seu ouro">
           <Gold value={p.save.gold} size={22} />
         </div>
+        <SoundToggle />
         <button className="btn" onClick={p.onCollection}>Coleção</button>
         <button className="btn" onClick={p.onShop}>Loja</button>
         <button className="btn primary" disabled={!p.totalSteps} onClick={p.onFinish}>

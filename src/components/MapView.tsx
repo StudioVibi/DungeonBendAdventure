@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type RefObject } from 'react'
 import { drawDuration, makeBurst, type Burst } from '../game/fx'
 import { TrailFx } from './TrailFx'
+import { construction } from '../game/audio'
 import { CAMPFIRE_ICON, HERO, ITEM_ART_OFFSET, ITEM_ART_RATIO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
 import { clusterLayout, edgeGeom, ICON_R, type EdgeGeom, type Pt } from '../game/geometry'
 import { floorMap, MAP_H, MAP_W, START, type Wave } from '../game/mapgen'
@@ -177,6 +178,7 @@ export function MapView(p: Props) {
     for (const e of fresh) {
       const dur = drawDuration(e.geom.samples)
       add[e.key] = dur
+      construction(plan.dungeon, dur, Object.keys(add).length - 1)
       if (!reduce) newBursts.push(makeBurst(plan.dungeon, e.geom.samples, dur, ++burstId.current))
     }
     setDrawing((d) => ({ ...d, ...add }))
