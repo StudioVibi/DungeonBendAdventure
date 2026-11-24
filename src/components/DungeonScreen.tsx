@@ -9,7 +9,7 @@ import {
   type ToolId,
 } from '../game/data'
 import { clusterLayout, distToPolyline, type Pt } from '../game/geometry'
-import { MAP_H, MAP_W } from '../game/mapgen'
+import { MAP_H, MAP_W, START } from '../game/mapgen'
 import {
   addItem,
   appendWave,
@@ -17,6 +17,7 @@ import {
   formatTime,
   removeItem,
   removeStairs,
+  replaceWave,
   setStairs,
   simulate,
   truncateAfter,
@@ -51,6 +52,15 @@ export function DungeonScreen(props: Props) {
   const [hoverWaveId, setHoverWaveId] = useState<string | null>(null)
   const [linking, setLinking] = useState(false)
   const [linkPointer, setLinkPointer] = useState<Pt | null>(null)
+  /** arrastando um trecho de trilha para trocar a onda de destino (ou mover a escada) */
+  const [edgeDrag, setEdgeDrag] = useState<{ edge: number | 'stairs'; start: Pt; pointer: Pt; moved: boolean } | null>(null)
+  const [hint, setHint] = useState<string | null>(null)
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const flashHint = (msg: string) => {
+    setHint(msg)
+    clearTimeout(hintTimer.current)
+    hintTimer.current = setTimeout(() => setHint(null), 2200)
+  }
   const planRef = useRef(plan)
   planRef.current = plan
 
@@ -89,8 +99,26 @@ export function DungeonScreen(props: Props) {
   }, [drag, plan, floorIdx, floor.steps, toSvg])
 
   // ---- prévia (plano hipotético para feedback instantâneo) ----
-  const hoverAppendable = hoverWaveId && !linking && !drag && !floor.steps.some((s) => s.waveId === hoverWaveId) ? hoverWaveId : null
+  /** onda candidata sob o ponteiro ao arrastar um trecho */
+  const edgeCandidate = useMemo(() => {
+    if (!edgeDrag?.moved || edgeDrag.edge === 'stairs') return null
+    const p = edgeDrag.pointer
+    const w = floorGeometry(plan, floorIdx).waves.find(
+      (wv) => !floor.steps.some((s) => s.waveId === wv.id) && Math.hypot(p.x - wv.x, p.y - wv.y) < clusterLayout(wv).radius + 6,
+    )
+    return w?.id ?? null
+  }, [edgeDrag, plan, floorIdx, floor.steps])
+
+  const hoverAppendable = hoverWaveId && !linking && !drag && !edgeDrag && !floor.steps.some((s) => s.waveId === hoverWaveId) ? hoverWaveId : null
   const preview = useMemo((): { plan: Plan; ghost: Ghost } | null => {
+    if (edgeDrag?.moved) {
+      if (edgeDrag.edge === 'stairs') {
+        const pos = { x: Math.round(edgeDrag.pointer.x), y: Math.round(edgeDrag.pointer.y) }
+        return { plan: setStairs(plan, floorIdx, pos), ghost: { kind: 'stairs' } }
+      }
+      if (edgeCandidate) return { plan: replaceWave(plan, floorIdx, edgeDrag.edge, edgeCandidate), ghost: { kind: 'wave', stepIdx: edgeDrag.edge } }
+      return null
+    }
     if (dropTarget?.kind === 'edge' && drag && drag.tool !== 'stairs') {
       const p2 = addItem(plan, floorIdx, dropTarget.stepIdx, drag.tool)
       return { plan: p2, ghost: { kind: 'item', stepIdx: dropTarget.stepIdx, itemIdx: p2.floors[floorIdx].steps[dropTarget.stepIdx].items.length - 1 } }
@@ -98,7 +126,7 @@ export function DungeonScreen(props: Props) {
     if (dropTarget?.kind === 'stairs') return { plan: setStairs(plan, floorIdx, dropTarget.pos), ghost: { kind: 'stairs' } }
     if (hoverAppendable) return { plan: appendWave(plan, floorIdx, hoverAppendable), ghost: { kind: 'wave', stepIdx: floor.steps.length } }
     return null
-  }, [dropTarget, drag, plan, floorIdx, hoverAppendable, floor.steps.length])
+  }, [edgeDrag, edgeCandidate, dropTarget, drag, plan, floorIdx, hoverAppendable, floor.steps.length])
   const previewSim = useMemo(() => (preview ? simulate(preview.plan) : null), [preview])
   const shown = previewSim ?? sim
 
@@ -138,7 +166,24 @@ export function DungeonScreen(props: Props) {
     setLinking(true)
     setLinkPointer(toSvg(e.clientX, e.clientY))
   }
+  const onEdgePointerDown = (e: RPointerEvent, edge: number | 'stairs') => {
+    e.preventDefault()
+    e.stopPropagation()
+    const p = toSvg(e.clientX, e.clientY)
+    if (!p) return
+    svgRef.current?.setPointerCapture(e.pointerId)
+    setHoverWaveId(null)
+    setEdgeDrag({ edge, start: p, pointer: p, moved: false })
+  }
+
   const onSvgPointerMove = (e: RPointerEvent) => {
+    if (edgeDrag) {
+      const p = toSvg(e.clientX, e.clientY)
+      if (!p) return
+      const moved = edgeDrag.moved || Math.hypot(p.x - edgeDrag.start.x, p.y - edgeDrag.start.y) > 10
+      setEdgeDrag({ ...edgeDrag, pointer: p, moved })
+      return
+    }
     if (!linking) return
     const p = toSvg(e.clientX, e.clientY)
     if (!p) return
@@ -156,6 +201,20 @@ export function DungeonScreen(props: Props) {
     }
   }
   const onSvgPointerUp = (e: RPointerEvent) => {
+    if (edgeDrag) {
+      svgRef.current?.releasePointerCapture(e.pointerId)
+      const { edge, moved } = edgeDrag
+      setEdgeDrag(null)
+      if (!moved) {
+        // clique: só apaga se for a última trilha do andar
+        if (edge === 'stairs') commit(removeStairs(plan, floorIdx))
+        else if (edge === floor.steps.length - 1 && !floor.stairs) commit(truncateAfter(plan, floorIdx, edge - 1))
+        else flashHint('Só a última trilha do andar pode ser apagada. Arraste uma trilha para trocar a onda.')
+        return
+      }
+      if (preview) commit(preview.plan)
+      return
+    }
     if (!linking) return
     svgRef.current?.releasePointerCapture(e.pointerId)
     setLinking(false)
@@ -183,6 +242,18 @@ export function DungeonScreen(props: Props) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [undo, floorIdx, commit])
+
+  const guides = useMemo((): [Pt, Pt][] => {
+    if (linking && linkPointer) return [[floorGeometry(plan, floorIdx).tail, linkPointer]]
+    if (!edgeDrag?.moved || preview) return []
+    const g = floorGeometry(plan, floorIdx)
+    const wavePt = (i: number) => g.waves.find((w) => w.id === floor.steps[i].waveId)!
+    const e = edgeDrag.edge === 'stairs' ? floor.steps.length : edgeDrag.edge
+    const prev = e === 0 ? START : wavePt(e - 1)
+    const next = e + 1 < floor.steps.length ? wavePt(e + 1) : edgeDrag.edge !== 'stairs' && floor.stairs ? floor.stairs : null
+    return next ? [[prev, edgeDrag.pointer], [edgeDrag.pointer, next]] : [[prev, edgeDrag.pointer]]
+  }, [linking, linkPointer, edgeDrag, preview, plan, floorIdx, floor])
+  const hiddenEdge = edgeDrag?.moved && !preview ? edgeDrag.edge : null
 
   const totalSteps = plan.floors.reduce((s, f) => s + f.steps.length, 0)
   const startDrag = (tool: DragTool) => (e: RPointerEvent) => {
@@ -223,7 +294,8 @@ export function DungeonScreen(props: Props) {
         })}
       </div>
 
-      <div className={`map-wrap ${drag ? 'dragging' : ''} ${linking ? 'linking' : ''}`}>
+      <div className={`map-wrap ${drag ? 'dragging' : ''} ${linking || edgeDrag?.moved ? 'linking' : ''}`}>
+        {hint && <div className="map-hint flash">{hint}</div>}
         <MapView
           plan={preview?.plan ?? plan}
           sim={shown}
@@ -232,7 +304,9 @@ export function DungeonScreen(props: Props) {
           dropStep={dropTarget?.kind === 'edge' ? dropTarget.stepIdx : null}
           svgRef={svgRef}
           hoverWaveId={hoverWaveId}
-          linkPointer={linkPointer}
+          guides={guides}
+          hiddenEdge={hiddenEdge}
+          onEdgePointerDown={onEdgePointerDown}
           onHoverWave={setHoverWaveId}
           onWaveClick={onWaveClick}
           onItemClick={(si, ii) => commit(removeItem(plan, floorIdx, si, ii))}
@@ -290,9 +364,9 @@ function Hud(p: Props & { sim: ReturnType<typeof simulate>; shown: ReturnType<ty
             <div className="hpbar-fill" style={{ width: `${hpPct * 100}%` }} />
             <span className="hpbar-text">
               <HeartIcon size={15} dead={sim.hpEnd <= 0} /> {sim.hpEnd} / {HERO.maxHp}
-              {p.preview && <Delta a={sim.hpEnd} b={shown.hpEnd} />}
             </span>
           </div>
+          {p.preview && <Delta a={sim.hpEnd} b={shown.hpEnd} />}
         </div>
         <div className={`stat status ${sim.alive ? 'ok' : 'bad'}`}>
           <div className="stat-label">Situação</div>

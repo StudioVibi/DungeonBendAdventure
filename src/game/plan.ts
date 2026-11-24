@@ -160,6 +160,13 @@ export function truncateAfter(plan: Plan, floorIdx: number, stepIdx: number): Pl
   return { ...plan, floors }
 }
 
+/** Troca a onda de um passo (mantém os itens do trecho e o caminho de saída). */
+export function replaceWave(plan: Plan, floorIdx: number, stepIdx: number, waveId: string): Plan {
+  const floors = cloneFloors(plan)
+  floors[floorIdx].steps[stepIdx].waveId = waveId
+  return { ...plan, floors }
+}
+
 export function addItem(plan: Plan, floorIdx: number, stepIdx: number, tool: ToolId): Plan {
   const floors = cloneFloors(plan)
   floors[floorIdx].steps[stepIdx].items.push(tool)

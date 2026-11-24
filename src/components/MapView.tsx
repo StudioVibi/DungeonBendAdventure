@@ -52,7 +52,11 @@ interface Props {
   dropStep: number | null
   svgRef: RefObject<SVGSVGElement | null>
   hoverWaveId: string | null
-  linkPointer: Pt | null
+  /** linhas-guia durante arrastos (conectar / mudar caminho) */
+  guides: [Pt, Pt][]
+  /** trecho escondido enquanto está sendo arrastado */
+  hiddenEdge: number | 'stairs' | null
+  onEdgePointerDown: (e: RPointerEvent, edge: number | 'stairs') => void
   onHoverWave: (id: string | null) => void
   onWaveClick: (waveId: string) => void
   onItemClick: (stepIdx: number, itemIdx: number) => void
@@ -107,15 +111,27 @@ export function MapView(p: Props) {
       <image href={dungeon.bg} x={0} y={0} width={MAP_W} height={MAP_H} preserveAspectRatio="xMidYMid slice" />
 
       {/* trilhas */}
-      {g.edges.map((e, i) => (
-        <Trail key={'e' + i} d={e.d} ghost={i === ghostWaveStep} highlight={p.dropStep === i} dead={fr.steps[i]?.afterDeath} />
+      {g.edges.map((e, i) =>
+        p.hiddenEdge === i ? null : (
+          <Trail key={'e' + i} d={e.d} ghost={i === ghostWaveStep} highlight={p.dropStep === i} dead={fr.steps[i]?.afterDeath} />
+        ),
+      )}
+      {g.stairsEdge && p.hiddenEdge !== 'stairs' && <Trail d={g.stairsEdge.d} ghost={ghost?.kind === 'stairs'} />}
+      {g.edges.map((e, i) => (p.hiddenEdge === i ? null : <Arrow key={'a' + i} e={e} ghost={i === ghostWaveStep} />))}
+      {p.guides.map(([a, b], i) => (
+        <line key={'g' + i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="link-line" pointerEvents="none" />
       ))}
-      {g.stairsEdge && <Trail d={g.stairsEdge.d} ghost={ghost?.kind === 'stairs'} />}
-      {g.edges.map((e, i) => (
-        <Arrow key={'a' + i} e={e} ghost={i === ghostWaveStep} />
-      ))}
-      {p.linkPointer && (
-        <line x1={g.tail.x} y1={g.tail.y} x2={p.linkPointer.x} y2={p.linkPointer.y} className="link-line" pointerEvents="none" />
+      {/* área de clique/arraste das trilhas (fica sob as ondas) */}
+      {!ghost &&
+        g.edges.map((e, i) => (
+          <path key={'h' + i} d={e.d} className="edge-hit" onPointerDown={(ev) => p.onEdgePointerDown(ev, i)}>
+            <title>{i === g.edges.length - 1 && !floor.stairs ? 'Clique para apagar · arraste para mudar a onda' : 'Arraste para mudar a onda'}</title>
+          </path>
+        ))}
+      {!ghost && g.stairsEdge && (
+        <path d={g.stairsEdge.d} className="edge-hit" onPointerDown={(ev) => p.onEdgePointerDown(ev, 'stairs')}>
+          <title>Clique para apagar a escada · arraste para mover</title>
+        </path>
       )}
 
       {/* ondas */}

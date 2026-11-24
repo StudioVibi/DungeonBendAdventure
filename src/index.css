@@ -72,7 +72,9 @@ h3, h4 { margin: .4em 0; }
 .hpbar { position: relative; width: 190px; height: 24px; background: #3a1d20; border-radius: 7px; overflow: hidden; border: 1px solid #5b2a2e; margin-top: 2px; }
 .hpbar-fill { position: absolute; inset: 0 auto 0 0; background: linear-gradient(180deg, #ef5a5f, #b5272d); transition: width .25s; }
 .hpbar-text { position: relative; display: flex; align-items: center; gap: 5px; height: 100%; padding: 0 8px; font-weight: 800; font-size: 14px; text-shadow: 0 1px 2px #000; }
-.delta { font-size: 13px; font-weight: 800; padding: 1px 6px; border-radius: 6px; }
+/* deltas flutuam sobre o card: não podem mudar o layout (senão o hover faz o mapa redimensionar e tremer) */
+.stat { position: relative; }
+.delta { position: absolute; top: -9px; right: -6px; z-index: 3; font-size: 12px; font-weight: 800; padding: 1px 6px; border-radius: 6px; white-space: nowrap; box-shadow: 0 2px 6px #0009; pointer-events: none; }
 .delta.good { color: #0e2a0e; background: var(--heal); }
 .delta.bad { color: #2a0e0e; background: var(--bad); }
 @keyframes pop { from { transform: scale(.7); opacity: 0 } to { transform: scale(1); opacity: 1 } }
@@ -109,6 +111,8 @@ h3, h4 { margin: .4em 0; }
 .trail.ghost .trail-dash { stroke: #fff; }
 .trail-arrow { fill: none; stroke: #f6e3b4; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
 @keyframes march { to { stroke-dashoffset: -36; } }
+.edge-hit { fill: none; stroke: transparent; stroke-width: 30; stroke-linecap: round; pointer-events: stroke; cursor: grab; }
+.edge-hit:hover { stroke: rgba(255, 214, 120, .18); }
 .link-line { stroke: #f6e3b4; stroke-width: 4; stroke-dasharray: 4 10; stroke-linecap: round; opacity: .85; }
 
 /* ondas */
@@ -292,3 +296,4 @@ h3, h4 { margin: .4em 0; }
 .queue-item.st-done .qi-name::after { content: ' ✓'; color: var(--gold); }
 .small-btn { padding: 4px 10px; font-size: 12px; }
 .bad { color: var(--bad); font-weight: 800; }
+.map-hint.flash { top: auto; bottom: 18px; border-color: var(--bad); z-index: 5; }
