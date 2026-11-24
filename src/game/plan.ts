@@ -1,6 +1,7 @@
 import {
   CAMPFIRES_PER_FLOOR,
   HERO,
+  HOSPITAL_MS,
   ITEMS,
   MAX_FLOORS,
   SECONDS_PER_REST_HP,
@@ -50,6 +51,8 @@ export interface Save {
   plans: Partial<Record<DungeonId, Plan>>
   /** runs iniciadas, em ordem de fila */
   runs: Run[]
+  /** fim da hospitalização mais recente já coletada (epoch ms) */
+  hospitalUntil: number
 }
 
 /** Uma run iniciada: roda em tempo real; a próxima da fila começa quando esta termina. */
@@ -61,6 +64,8 @@ export interface Run {
   /** epoch ms */
   startAt: number
   endAt: number
+  /** se o Alberto morre nesta run: fica hospitalizado até aqui */
+  hospitalUntil?: number
 }
 
 export type RunStatus = 'running' | 'queued' | 'done'
@@ -68,23 +73,38 @@ export type RunStatus = 'running' | 'queued' | 'done'
 export const runStatus = (r: Run, now: number): RunStatus => (now >= r.endAt ? 'done' : now >= r.startAt ? 'running' : 'queued')
 export const runDurationMs = (r: { result: SimResult }) => Math.max(1000, Math.round(r.result.runTime * 1000))
 
-/** Recalcula horários: runs já iniciadas ficam como estão; as da fila começam quando a anterior termina. */
-export function retime(runs: Run[], now: number): Run[] {
-  let prevEnd = 0
+/** Quando o Alberto fica livre depois desta run (fim + hospital, se morrer). */
+export const runFreeAt = (r: Run) => Math.max(r.endAt, r.hospitalUntil ?? 0)
+export const hospitalFor = (result: SimResult, endAt: number) => (result.alive ? undefined : endAt + HOSPITAL_MS)
+
+/**
+ * Recalcula horários: runs já iniciadas ficam como estão; as da fila começam quando
+ * o Alberto fica livre (run anterior terminou e, se morreu, saiu do hospital).
+ */
+export function retime(runs: Run[], now: number, hospitalUntil = 0): Run[] {
+  let prevFree = hospitalUntil
   return runs.map((r) => {
     if (r.startAt <= now) {
-      prevEnd = Math.max(prevEnd, r.endAt)
+      prevFree = Math.max(prevFree, runFreeAt(r))
       return r
     }
-    const startAt = Math.max(now, prevEnd)
+    const startAt = Math.max(now, prevFree)
     const endAt = startAt + runDurationMs(r)
-    prevEnd = endAt
-    return { ...r, startAt, endAt }
+    const next = { ...r, startAt, endAt, hospitalUntil: hospitalFor(r.result, endAt) }
+    prevFree = runFreeAt(next)
+    return next
   })
 }
 
 /** Quando uma nova run começaria se entrasse na fila agora. */
-export const nextStartAt = (runs: Run[], now: number) => Math.max(now, ...runs.map((r) => r.endAt))
+export const nextStartAt = (runs: Run[], now: number, hospitalUntil = 0) =>
+  Math.max(now, hospitalUntil, ...runs.map(runFreeAt))
+
+/** Até quando o Alberto está hospitalizado agora (0 se não está). */
+export function hospitalizedUntil(save: Save, now: number) {
+  const t = Math.max(save.hospitalUntil, ...save.runs.filter((r) => r.endAt <= now).map((r) => r.hospitalUntil ?? 0))
+  return t > now ? t : 0
+}
 
 export const newPlan = (dungeon: DungeonId): Plan => ({ dungeon, floors: [{ steps: [], stairs: null }] })
 

@@ -16,6 +16,9 @@ export const POTION_SLOTS = 3
 export const WEAPON_SLOTS = 2
 export const MAX_FLOORS = 15
 export const STARTING_GOLD = 60
+/** Herói morto fica hospitalizado por este tempo depois do fim da run. */
+export const HOSPITAL_MS = 2 * 60 * 60 * 1000
+export const BANDAGE_ICON = '/assets/generated/bandage.svg'
 
 export type MonsterId = 'rat' | 'bat' | 'spider' | 'slime_green' | 'plant' | 'plant_carnivore'
 
@@ -105,16 +108,16 @@ export const DUNGEONS: DungeonDef[] = [
   {
     id: 'caverna',
     name: 'Caverna',
-    blurb: 'Túneis úmidos cheios de ratos, morcegos e slimes.',
-    pool: ['rat', 'bat', 'slime_green'],
+    blurb: 'Túneis úmidos cheios de ratos, morcegos e aranhas.',
+    pool: ['rat', 'bat', 'spider'],
     bg: '/assets/generated/bg-caverna.svg',
     accent: '#c9a36a',
   },
   {
     id: 'cripta',
     name: 'Cripta',
-    blurb: 'Corredores de pedra onde aranhas tecem entre os túmulos.',
-    pool: ['bat', 'spider', 'rat'],
+    blurb: 'Corredores de pedra tomados por slimes entre os túmulos.',
+    pool: ['slime_green'],
     bg: '/assets/generated/bg-cripta.svg',
     accent: '#9fb2d8',
   },
@@ -122,7 +125,7 @@ export const DUNGEONS: DungeonDef[] = [
     id: 'jardim',
     name: 'Jardim',
     blurb: 'Um jardim selvagem. As plantas mordem — e batem forte.',
-    pool: ['plant', 'plant_carnivore', 'slime_green'],
+    pool: ['plant', 'plant_carnivore'],
     bg: '/assets/generated/bg-jardim.svg',
     accent: '#8fd46a',
   },

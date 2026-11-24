@@ -297,3 +297,11 @@ h3, h4 { margin: .4em 0; }
 .small-btn { padding: 4px 10px; font-size: 12px; }
 .bad { color: var(--bad); font-weight: 800; }
 .map-hint.flash { top: auto; bottom: 18px; border-color: var(--bad); z-index: 5; }
+
+/* hospital */
+.hero-portrait { position: relative; display: inline-block; }
+.hero-card.hospital .hero-portrait > img:first-child { filter: saturate(.55) brightness(.9); }
+.bandage { position: absolute; width: 44px; height: 44px; top: 34px; left: 80px; transform: rotate(15deg); filter: drop-shadow(0 2px 3px #0008); pointer-events: none; }
+.hero-status { font-weight: 800; color: var(--accent); }
+.hero-status.hospital { color: #ff9a9a; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.hs-clock { font-family: 'Jaro', sans-serif; font-size: 30px; line-height: 1; color: var(--text); font-variant-numeric: tabular-nums; }

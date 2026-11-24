@@ -16,6 +16,7 @@ export function defaultSave(): Save {
     cards: {},
     plans: {},
     runs: [],
+    hospitalUntil: 0,
   }
 }
 
@@ -43,6 +44,7 @@ function load(): Save {
     delete s.plan
     s.plans ??= {}
     s.runs ??= []
+    s.hospitalUntil ??= 0
     s.cards = mergeCards(s.cards ?? {})
     return normalizeLoadout({
       ...d,

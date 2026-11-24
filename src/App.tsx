@@ -4,6 +4,8 @@ import { CollectionScreen, ReportModal, SelectScreen, ShopScreen } from './compo
 import { dungeonById, type DungeonId, type PotionId } from './game/data'
 import {
   mergeCards,
+  hospitalFor,
+  hospitalizedUntil,
   nextStartAt,
   newPlan,
   retime,
@@ -120,8 +122,9 @@ export default function App() {
     const result = simulate(plan)
     const d = active
     update((s) => {
-      const startAt = nextStartAt(s.runs, Date.now())
-      const run: Run = { id: `${d}-${Date.now()}`, dungeon: d, plan, result, startAt, endAt: startAt + runDurationMs({ result }) }
+      const startAt = nextStartAt(s.runs, Date.now(), s.hospitalUntil)
+      const endAt = startAt + runDurationMs({ result })
+      const run: Run = { id: `${d}-${Date.now()}`, dungeon: d, plan, result, startAt, endAt, hospitalUntil: hospitalFor(result, endAt) }
       const stock = { ...s.stock }
       for (const [id, n] of Object.entries(result.potionsUsed) as [PotionId, number][]) stock[id] = Math.max(0, stock[id] - n)
       const plans = { ...s.plans }
@@ -142,7 +145,13 @@ export default function App() {
     const r = run.result
     update((s) => {
       const cards = mergeCards(s.cards, r.kills)
-      return { ...s, gold: s.gold + r.gold, cards, runs: s.runs.filter((x) => x.id !== runId) }
+      return {
+        ...s,
+        gold: s.gold + r.gold,
+        cards,
+        hospitalUntil: Math.max(s.hospitalUntil, run.hospitalUntil ?? 0),
+        runs: s.runs.filter((x) => x.id !== runId),
+      }
     })
     setReport(null)
   }
@@ -158,7 +167,7 @@ export default function App() {
         ...s,
         stock,
         plans: { ...s.plans, [run.dungeon]: run.plan },
-        runs: retime(s.runs.filter((r) => r.id !== runId), Date.now()),
+        runs: retime(s.runs.filter((r) => r.id !== runId), Date.now(), s.hospitalUntil),
       }
     })
   }
@@ -167,8 +176,21 @@ export default function App() {
   const skipRunning = () => {
     update((s) => {
       const t = Date.now()
-      const runs = s.runs.map((r) => (runStatus(r, t) === 'running' ? { ...r, startAt: t - runDurationMs(r), endAt: t } : r))
-      return { ...s, runs: retime(runs, t) }
+      const runs = s.runs.map((r) =>
+        runStatus(r, t) === 'running' ? { ...r, startAt: t - runDurationMs(r), endAt: t, hospitalUntil: hospitalFor(r.result, t) } : r,
+      )
+      return { ...s, runs: retime(runs, t, s.hospitalUntil) }
+    })
+  }
+
+  /** Playtest: dá alta ao Alberto agora e adianta a fila. */
+  const skipHospital = () => {
+    update((s) => {
+      const t = Date.now()
+      const cap = (h?: number) => (h !== undefined && h > t ? t : h)
+      const runs = s.runs.map((r) => (r.endAt <= t ? { ...r, hospitalUntil: cap(r.hospitalUntil) } : r))
+      const hospitalUntil = Math.min(s.hospitalUntil, t)
+      return { ...s, hospitalUntil, runs: retime(runs, t, hospitalUntil) }
     })
   }
 
@@ -180,7 +202,8 @@ export default function App() {
   const back = () => (prevScreen === 'dungeon' && active && plan ? openDungeon(active) : setScreen('select'))
 
   const resultRun = report?.mode === 'result' ? save.runs.find((r) => r.id === report.runId) : undefined
-  const queueStart = nextStartAt(save.runs, now)
+  const queueStart = nextStartAt(save.runs, now, save.hospitalUntil)
+  const hospital = hospitalizedUntil(save, now)
 
   return (
     <>
@@ -194,6 +217,8 @@ export default function App() {
           onOpenReport={(runId) => setReport({ mode: 'result', runId })}
           onCancelQueued={cancelQueued}
           onSkip={skipRunning}
+          hospitalUntil={hospital}
+          onSkipHospital={skipHospital}
         />
       )}
       {screen === 'dungeon' && plan && (
@@ -232,6 +257,7 @@ export default function App() {
           sim={report.sim}
           dungeonName={dungeonById(plan.dungeon).name}
           startsIn={queueStart - now}
+          hospitalized={hospital > 0}
           onConfirm={startRun}
           onCancel={() => setReport(null)}
         />
@@ -242,6 +268,7 @@ export default function App() {
           sim={resultRun.result}
           dungeonName={dungeonById(resultRun.dungeon).name}
           startsIn={0}
+          hospitalized={false}
           onConfirm={() => collect(resultRun.id)}
           onCancel={() => setReport(null)}
         />

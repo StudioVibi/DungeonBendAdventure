@@ -1,4 +1,5 @@
 import {
+  BANDAGE_ICON,
   DUNGEONS,
   HERO,
   ITEMS,
@@ -34,8 +35,12 @@ export function SelectScreen(p: {
   onOpenReport: (runId: string) => void
   onCancelQueued: (runId: string) => void
   onSkip: () => void
+  /** epoch ms do fim da hospitalização (0 se não está hospitalizado) */
+  hospitalUntil: number
+  onSkipHospital: () => void
 }) {
   const { save, now } = p
+  const runningRun = save.runs.find((r) => runStatus(r, now) === 'running')
   const runs = save.runs
   const queuePos = (r: Run) => runs.filter((x) => runStatus(x, now) !== 'done').indexOf(r)
   return (
@@ -49,10 +54,23 @@ export function SelectScreen(p: {
         </div>
       </header>
       <div className="select-body">
-        <div className="hero-card">
-          <HeroImg size={170} />
+        <div className={`hero-card ${p.hospitalUntil ? 'hospital' : ''}`}>
+          <div className="hero-portrait">
+            <HeroImg size={170} />
+            {p.hospitalUntil > 0 && <img className="bandage" src={BANDAGE_ICON} alt="Curativo" />}
+          </div>
           <div className="hero-name">{HERO.name}</div>
-          <div className="hero-hp"><HeartIcon /> {HERO.maxHp} de vida</div>
+          {p.hospitalUntil > 0 ? (
+            <div className="hero-status hospital">
+              <div>🏥 Hospitalizado</div>
+              <div className="hs-clock">{clock(p.hospitalUntil - now)}</div>
+              <button className="btn ghost small-btn" onClick={p.onSkipHospital} title="Atalho de playtest">⏩ dar alta agora</button>
+            </div>
+          ) : runningRun ? (
+            <div className="hero-status">⚔ Em run: {DUNGEONS.find((d) => d.id === runningRun.dungeon)!.name}</div>
+          ) : (
+            <div className="hero-hp"><HeartIcon /> {HERO.maxHp} de vida</div>
+          )}
         </div>
         <div className="dungeon-cards">
           {DUNGEONS.map((d) => {
@@ -289,6 +307,7 @@ export function ReportModal(p: {
   dungeonName: string
   /** ms até a run começar (prévia, quando há fila) */
   startsIn: number
+  hospitalized: boolean
   onConfirm: () => void
   onCancel: () => void
 }) {
@@ -313,7 +332,7 @@ export function ReportModal(p: {
           </div>
           <div><span className="muted">Vida final</span><b><HeartIcon dead={sim.hpEnd <= 0} /> {Math.max(0, sim.hpEnd)}</b></div>
         </div>
-        {!sim.alive && <p className="muted small center">Morrendo, o ouro é perdido — mas os monstros derrotados antes da queda viram cartas.</p>}
+        {!sim.alive && <p className="muted small center">Morrendo, o ouro é perdido e o Alberto fica 2h hospitalizado — mas os monstros derrotados antes da queda viram cartas.</p>}
         <h4>{preview ? 'Cartas que vai obter' : 'Cartas obtidas'}</h4>
         {kills.length === 0 ? (
           <p className="muted small">Nenhuma.</p>
@@ -341,7 +360,9 @@ export function ReportModal(p: {
         {preview && (
           <p className="muted small center">
             {p.startsIn > 0
-              ? `Outra run está em andamento: esta entra na fila e começa em ${formatTime(p.startsIn / 1000)}.`
+              ? p.hospitalized
+                ? `O Alberto está hospitalizado: esta run entra na fila e começa em ${formatTime(p.startsIn / 1000)}.`
+                : `Outra run (ou hospitalização) vem antes: esta entra na fila e começa em ${formatTime(p.startsIn / 1000)}.`
               : 'A run começa agora. A dungeon fica trancada até ela terminar.'}
           </p>
         )}
