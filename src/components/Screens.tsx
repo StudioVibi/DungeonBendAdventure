@@ -76,7 +76,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
           <span className="tag-price">
             <Gold value={it.price} size={16} />
           </span>
-          <span className={`tag-effect ${it.kind === 'potion' ? 'heal' : 'dmg'}`}>{it.kind === 'potion' ? `+${it.value} ❤` : `${it.value}`}</span>
+          <span className={`tag-effect ${it.kind === 'potion' ? 'heal' : 'dmg'}`}>{it.kind === 'potion' ? `+${it.value} ❤` : `${it.value} damage`}</span>
         </span>
       </button>
     )
