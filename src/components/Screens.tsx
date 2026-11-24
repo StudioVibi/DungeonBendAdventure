@@ -34,6 +34,7 @@ export function SelectScreen(p: {
   onOpenReport: (runId: string) => void
   onCancelQueued: (runId: string) => void
   onSkip: () => void
+  onDiscard: (d: DungeonId) => void
   /** epoch ms do fim da hospitalização (0 se não está hospitalizado) */
   hospitalUntil: number
   onSkipHospital: () => void
@@ -89,7 +90,25 @@ export function SelectScreen(p: {
                   {d.pool.map((m) => <MonsterHeadBadge key={m} monster={m} size={52} />)}
                 </div>
                 <div className="dc-blurb">{d.blurb}</div>
-                {!run && <div className="dc-cta">{draft ? 'Continuar trilha' : 'Entrar'}</div>}
+                {!run && (
+                  <div className="dc-actions">
+                    <span className="dc-cta">{draft ? 'Continuar trilha' : 'Entrar'}</span>
+                    {draft && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className="dc-discard"
+                        title="Descartar a trilha salva"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (confirm(`Descartar a trilha salva em ${d.name}?`)) p.onDiscard(d.id)
+                        }}
+                      >
+                        Descartar
+                      </span>
+                    )}
+                  </div>
+                )}
                 {run && st === 'running' && (
                   <div className="dc-timer">
                     <div className="dc-timer-label">⚔ Trilha em andamento</div>

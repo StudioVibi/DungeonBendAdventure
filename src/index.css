@@ -336,3 +336,7 @@ h3, h4 { margin: .4em 0; }
 .wave.too-far .wave-halo { fill: rgba(255, 80, 80, .12); stroke: rgba(255, 107, 107, .85); stroke-dasharray: 6 6; }
 .wave.too-far { cursor: not-allowed; }
 .link-line.far { stroke: var(--bad); opacity: .7; }
+
+.dc-actions { display: flex; align-items: center; gap: 8px; }
+.dc-discard { font-size: 12px; font-weight: 700; color: #f1d6d6; background: rgba(40, 10, 12, .75); border: 1px solid #8a2c33; padding: 4px 8px; border-radius: 7px; cursor: pointer; }
+.dc-discard:hover { background: #7a2c31; color: #fff; }

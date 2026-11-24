@@ -217,6 +217,17 @@ export default function App() {
           onOpenReport={(runId) => setReport({ mode: 'result', runId })}
           onCancelQueued={cancelQueued}
           onSkip={skipRunning}
+          onDiscard={(d) => {
+            update((s) => {
+              const plans = { ...s.plans }
+              delete plans[d]
+              return { ...s, plans }
+            })
+            if (active === d) {
+              history.current = []
+              setActive(null)
+            }
+          }}
           hospitalUntil={hospital}
           onSkipHospital={skipHospital}
         />
