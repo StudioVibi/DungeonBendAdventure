@@ -1,0 +1,406 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import {
+  CAMPFIRE_ICON,
+  HERO,
+  ITEMS,
+  STAIRS_ICON,
+  dungeonById,
+  isPotion,
+  type ToolId,
+} from '../game/data'
+import { clusterLayout, distToPolyline, type Pt } from '../game/geometry'
+import { MAP_H, MAP_W } from '../game/mapgen'
+import {
+  addItem,
+  appendWave,
+  availability,
+  formatTime,
+  removeItem,
+  removeStairs,
+  setStairs,
+  simulate,
+  truncateAfter,
+  type Plan,
+  type Save,
+} from '../game/plan'
+import { MapView, floorGeometry, type Ghost } from './MapView'
+import { Gold, HeartIcon } from './ui'
+
+type DragTool = ToolId | 'stairs'
+
+interface Props {
+  save: Save
+  plan: Plan
+  floorIdx: number
+  setFloorIdx: (i: number) => void
+  commit: (plan: Plan) => void
+  undo: () => void
+  canUndo: boolean
+  onShop: () => void
+  onCollection: () => void
+  onLeave: () => void
+  onFinish: () => void
+}
+
+export function DungeonScreen(props: Props) {
+  const { plan, floorIdx, commit, setFloorIdx, undo } = props
+  const svgRef = useRef<SVGSVGElement | null>(null)
+  const [drag, setDrag] = useState<{ tool: DragTool; cx: number; cy: number } | null>(null)
+  const [hoverWaveId, setHoverWaveId] = useState<string | null>(null)
+  const [linking, setLinking] = useState(false)
+  const [linkPointer, setLinkPointer] = useState<Pt | null>(null)
+  const planRef = useRef(plan)
+  planRef.current = plan
+
+  const floor = plan.floors[floorIdx]
+  const dungeon = dungeonById(plan.dungeon)
+  const sim = useMemo(() => simulate(plan), [plan])
+
+  const toSvg = useCallback((cx: number, cy: number): Pt | null => {
+    const svg = svgRef.current
+    if (!svg) return null
+    const m = svg.getScreenCTM()
+    if (!m) return null
+    const p = new DOMPoint(cx, cy).matrixTransform(m.inverse())
+    return { x: p.x, y: p.y }
+  }, [])
+
+  // ---- alvo de soltura do item arrastado ----
+  const dropTarget = useMemo(() => {
+    if (!drag) return null
+    const p = toSvg(drag.cx, drag.cy)
+    if (!p || p.x < 0 || p.y < 0 || p.x > MAP_W || p.y > MAP_H) return null
+    if (drag.tool === 'stairs') return { kind: 'stairs' as const, pos: { x: Math.round(p.x), y: Math.round(p.y) } }
+    const g = floorGeometry(plan, floorIdx)
+    let best = -1
+    let bestD = 80
+    g.edges.forEach((e, i) => {
+      const w = g.waves.find((wv) => wv.id === floor.steps[i].waveId)!
+      const dWave = Math.max(0, Math.hypot(p.x - w.x, p.y - w.y) - clusterLayout(w).radius)
+      const d = Math.min(distToPolyline(p, e.samples), dWave)
+      if (d < bestD) {
+        bestD = d
+        best = i
+      }
+    })
+    return best >= 0 ? { kind: 'edge' as const, stepIdx: best } : null
+  }, [drag, plan, floorIdx, floor.steps, toSvg])
+
+  // ---- prévia (plano hipotético para feedback instantâneo) ----
+  const hoverAppendable = hoverWaveId && !linking && !drag && !floor.steps.some((s) => s.waveId === hoverWaveId) ? hoverWaveId : null
+  const preview = useMemo((): { plan: Plan; ghost: Ghost } | null => {
+    if (dropTarget?.kind === 'edge' && drag && drag.tool !== 'stairs') {
+      const p2 = addItem(plan, floorIdx, dropTarget.stepIdx, drag.tool)
+      return { plan: p2, ghost: { kind: 'item', stepIdx: dropTarget.stepIdx, itemIdx: p2.floors[floorIdx].steps[dropTarget.stepIdx].items.length - 1 } }
+    }
+    if (dropTarget?.kind === 'stairs') return { plan: setStairs(plan, floorIdx, dropTarget.pos), ghost: { kind: 'stairs' } }
+    if (hoverAppendable) return { plan: appendWave(plan, floorIdx, hoverAppendable), ghost: { kind: 'wave', stepIdx: floor.steps.length } }
+    return null
+  }, [dropTarget, drag, plan, floorIdx, hoverAppendable, floor.steps.length])
+  const previewSim = useMemo(() => (preview ? simulate(preview.plan) : null), [preview])
+  const shown = previewSim ?? sim
+
+  // ---- arrastar itens da mochila ----
+  const dropRef = useRef<typeof dropTarget>(null)
+  dropRef.current = dropTarget
+  const dragging = drag !== null
+  const dragTool = drag?.tool
+  useEffect(() => {
+    if (!dragging || !dragTool) return
+    const move = (e: PointerEvent) => setDrag((d) => (d ? { ...d, cx: e.clientX, cy: e.clientY } : d))
+    const up = () => {
+      const t = dropRef.current
+      const cur = planRef.current
+      if (t?.kind === 'edge' && dragTool !== 'stairs') commit(addItem(cur, floorIdx, t.stepIdx, dragTool))
+      if (t?.kind === 'stairs') {
+        commit(setStairs(cur, floorIdx, t.pos))
+        setFloorIdx(floorIdx + 1)
+      }
+      setDrag(null)
+    }
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setDrag(null)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('keydown', key)
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('keydown', key)
+    }
+  }, [dragging, dragTool, commit, floorIdx, setFloorIdx])
+
+  // ---- arrastar a trilha (conectar várias ondas em sequência) ----
+  const onTailPointerDown = (e: RPointerEvent) => {
+    e.preventDefault()
+    svgRef.current?.setPointerCapture(e.pointerId)
+    setLinking(true)
+    setLinkPointer(toSvg(e.clientX, e.clientY))
+  }
+  const onSvgPointerMove = (e: RPointerEvent) => {
+    if (!linking) return
+    const p = toSvg(e.clientX, e.clientY)
+    if (!p) return
+    setLinkPointer(p)
+    const cur = planRef.current
+    const f = cur.floors[floorIdx]
+    const g = floorGeometry(cur, floorIdx)
+    const hit = g.waves.find(
+      (w) => !f.steps.some((s) => s.waveId === w.id) && Math.hypot(p.x - w.x, p.y - w.y) < clusterLayout(w).radius,
+    )
+    if (hit) {
+      const next = appendWave(cur, floorIdx, hit.id)
+      planRef.current = next
+      commit(next)
+    }
+  }
+  const onSvgPointerUp = (e: RPointerEvent) => {
+    if (!linking) return
+    svgRef.current?.releasePointerCapture(e.pointerId)
+    setLinking(false)
+    setLinkPointer(null)
+  }
+
+  const onWaveClick = (waveId: string) => {
+    const idx = floor.steps.findIndex((s) => s.waveId === waveId)
+    if (idx < 0) commit(appendWave(plan, floorIdx, waveId))
+    else if (idx < floor.steps.length - 1) commit(truncateAfter(plan, floorIdx, idx))
+    setHoverWaveId(null)
+  }
+
+  // ---- teclado ----
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo()
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        const f = planRef.current.floors[floorIdx]
+        if (f.steps.length) commit(truncateAfter(planRef.current, floorIdx, f.steps.length - 2))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [undo, floorIdx, commit])
+
+  const totalSteps = plan.floors.reduce((s, f) => s + f.steps.length, 0)
+  const startDrag = (tool: DragTool) => (e: RPointerEvent) => {
+    e.preventDefault()
+    setDrag({ tool, cx: e.clientX, cy: e.clientY })
+  }
+
+  return (
+    <div className="dungeon-screen">
+      <Hud {...props} sim={sim} shown={shown} preview={!!previewSim} dungeonName={dungeon.name} totalSteps={totalSteps} />
+
+      <div className="floor-tabs">
+        {plan.floors.map((f, i) => {
+          const fr = sim.floors[i]
+          const dead = sim.death && sim.death.floor <= i
+          return (
+            <button key={i} className={`tab ${i === floorIdx ? 'active' : ''} ${dead ? 'dead' : ''}`} onClick={() => props.setFloorIdx(i)}>
+              Andar {i + 1}
+              <span className="tab-sub">
+                Nv {i + 1} · {f.steps.length} {f.steps.length === 1 ? 'onda' : 'ondas'} · <HeartIcon size={13} dead={fr.hpEnd <= 0} /> {fr.hpEnd}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div className={`map-wrap ${drag ? 'dragging' : ''} ${linking ? 'linking' : ''}`}>
+        <MapView
+          plan={preview?.plan ?? plan}
+          sim={shown}
+          floorIdx={floorIdx}
+          ghost={preview?.ghost ?? null}
+          dropStep={dropTarget?.kind === 'edge' ? dropTarget.stepIdx : null}
+          svgRef={svgRef}
+          hoverWaveId={hoverWaveId}
+          linkPointer={linkPointer}
+          onHoverWave={setHoverWaveId}
+          onWaveClick={onWaveClick}
+          onItemClick={(si, ii) => commit(removeItem(plan, floorIdx, si, ii))}
+          onStairsClick={() => commit(removeStairs(plan, floorIdx))}
+          onTailPointerDown={onTailPointerDown}
+          onSvgPointerMove={onSvgPointerMove}
+          onSvgPointerUp={onSvgPointerUp}
+        />
+        {floor.steps.length === 0 && !drag && (
+          <div className="map-hint">
+            {floorIdx === 0
+              ? 'Clique numa onda (ou arraste a partir do Alberto) para traçar a trilha.'
+              : `Andar ${floorIdx + 1}: monstros com +${floorIdx} nível. Continue a trilha!`}
+          </div>
+        )}
+        {drag && drag.tool !== 'stairs' && floor.steps.length === 0 && <div className="map-hint">Conecte uma onda primeiro para colocar itens na trilha.</div>}
+      </div>
+
+      <Bag {...props} onStart={startDrag} dragging={drag?.tool ?? null} stairsUsed={!!floor.stairs} />
+
+      {drag && (
+        <img
+          className="drag-ghost"
+          src={drag.tool === 'stairs' ? STAIRS_ICON : drag.tool === 'campfire' ? CAMPFIRE_ICON : ITEMS[drag.tool].icon}
+          style={{ left: drag.cx, top: drag.cy }}
+          alt=""
+        />
+      )}
+    </div>
+  )
+}
+
+// ---------------- HUD ----------------
+
+function Delta({ a, b, invert = false, fmt = (n: number) => String(n) }: { a: number; b: number; invert?: boolean; fmt?: (n: number) => string }) {
+  if (a === b) return null
+  const good = invert ? b < a : b > a
+  return <span className={`delta ${good ? 'good' : 'bad'}`}>→ {fmt(b)}</span>
+}
+
+function Hud(p: Props & { sim: ReturnType<typeof simulate>; shown: ReturnType<typeof simulate>; preview: boolean; dungeonName: string; totalSteps: number }) {
+  const { sim, shown } = p
+  const hpPct = Math.max(0, Math.min(1, sim.hpEnd / HERO.maxHp))
+  return (
+    <header className="hud">
+      <div className="hud-left">
+        <button className="btn ghost" onClick={p.onLeave}>← Dungeons</button>
+        <div className="hud-title">{p.dungeonName}</div>
+      </div>
+
+      <div className="hud-stats">
+        <div className="stat">
+          <div className="stat-label">Vida do {HERO.name}</div>
+          <div className="hpbar">
+            <div className="hpbar-fill" style={{ width: `${hpPct * 100}%` }} />
+            <span className="hpbar-text">
+              <HeartIcon size={15} dead={sim.hpEnd <= 0} /> {sim.hpEnd} / {HERO.maxHp}
+              {p.preview && <Delta a={sim.hpEnd} b={shown.hpEnd} />}
+            </span>
+          </div>
+        </div>
+        <div className={`stat status ${sim.alive ? 'ok' : 'bad'}`}>
+          <div className="stat-label">Situação</div>
+          <div className="stat-value">
+            {sim.alive ? (
+              p.totalSteps ? 'Sai vivo ✓' : '—'
+            ) : (
+              <>
+                ☠ Déficit {sim.deficit} ♥ <span className="muted">(andar {sim.death!.floor + 1}, onda {sim.death!.step + 1})</span>
+              </>
+            )}
+            {p.preview && shown.alive !== sim.alive && <span className={`delta ${shown.alive ? 'good' : 'bad'}`}>→ {shown.alive ? 'vivo' : `déficit ${shown.deficit}`}</span>}
+            {p.preview && !shown.alive && !sim.alive && shown.deficit !== sim.deficit && <Delta a={sim.deficit} b={shown.deficit} invert />}
+          </div>
+        </div>
+        <div className="stat">
+          <div className="stat-label">Tempo na dungeon</div>
+          <div className="stat-value">
+            ⏳ {formatTime(sim.totalTime)}
+            {p.preview && <Delta a={sim.totalTime} b={shown.totalTime} invert fmt={formatTime} />}
+          </div>
+        </div>
+        <div className="stat">
+          <div className="stat-label">Ouro da run</div>
+          <div className={`stat-value ${sim.alive ? '' : 'muted strike'}`}>
+            <Gold value={sim.goldLoot} />
+            {p.preview && <Delta a={sim.goldLoot} b={shown.goldLoot} />}
+          </div>
+        </div>
+      </div>
+
+      <div className="hud-right">
+        <div className="wallet" title="Seu ouro">
+          <Gold value={p.save.gold} size={22} />
+        </div>
+        <button className="btn" onClick={p.onCollection}>Coleção</button>
+        <button className="btn" onClick={p.onShop}>Loja</button>
+        <button className="btn primary" disabled={!p.totalSteps} onClick={p.onFinish}>
+          Concluir run
+        </button>
+      </div>
+    </header>
+  )
+}
+
+// ---------------- Mochila ----------------
+
+function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; dragging: DragTool | null; stairsUsed: boolean }) {
+  const { save, plan, floorIdx } = p
+  // para cada slot, decide se ele já foi "gasto" neste andar
+  const seen: Partial<Record<ToolId, number>> = {}
+  const slot = (tool: ToolId | null, key: string) => {
+    if (!tool) return <div key={key} className="slot empty" title="Slot vazio — equipe na Loja">vazio</div>
+    const a = availability(save, plan, floorIdx, tool)
+    const k = (seen[tool] = (seen[tool] ?? 0) + 1)
+    const usedHere = k <= a.usedOnFloor
+    const noStock = !usedHere && a.left <= 0
+    const disabled = usedHere || noStock
+    const it = ITEMS[tool as keyof typeof ITEMS]
+    return (
+      <div
+        key={key}
+        className={`slot ${disabled ? 'used' : ''} ${p.dragging === tool ? 'lifted' : ''}`}
+        onPointerDown={disabled ? undefined : p.onStart(tool)}
+        title={`${it.name} — ${usedHere ? 'já usado neste andar' : noStock ? 'sem estoque' : 'arraste para a trilha'}`}
+      >
+        <img src={it.icon} alt="" draggable={false} />
+        <span className={`slot-val ${isPotion(tool) ? 'heal' : 'dmg'}`}>{isPotion(tool) ? `+${it.value}` : `⚔${it.value}`}</span>
+        {isPotion(tool) && <span className="slot-stock">x{save.stock[tool]}</span>}
+        {usedHere && <span className="slot-flag">usado</span>}
+        {noStock && <span className="slot-flag">sem estoque</span>}
+      </div>
+    )
+  }
+  const camp = availability(save, plan, floorIdx, 'campfire')
+  return (
+    <footer className="bag">
+      <div className="bag-group">
+        <div className="bag-label">Poções</div>
+        <div className="slots">{save.loadout.potions.map((t, i) => slot(t, 'p' + i))}</div>
+      </div>
+      <div className="bag-group">
+        <div className="bag-label">Armas</div>
+        <div className="slots">{save.loadout.weapons.map((t, i) => slot(t, 'w' + i))}</div>
+      </div>
+      <div className="bag-group">
+        <div className="bag-label">Ações</div>
+        <div className="slots">
+          <div
+            className={`slot ${camp.left <= 0 ? 'used' : ''}`}
+            onPointerDown={camp.left > 0 ? p.onStart('campfire') : undefined}
+            title="Fogueira: descansa até a vida cheia (2s por ponto curado). 1 por andar."
+          >
+            <img src={CAMPFIRE_ICON} alt="" draggable={false} />
+            <span className="slot-val heal">cheia</span>
+            {camp.left <= 0 && <span className="slot-flag">usada</span>}
+          </div>
+          <div
+            className={`slot ${p.stairsUsed ? 'used' : ''}`}
+            onPointerDown={p.stairsUsed ? undefined : p.onStart('stairs')}
+            title="Escada: arraste para o mapa para subir ao próximo andar (+1 nível nos monstros)."
+          >
+            <img src={STAIRS_ICON} alt="" draggable={false} />
+            <span className="slot-val">subir</span>
+            {p.stairsUsed && <span className="slot-flag">colocada</span>}
+          </div>
+        </div>
+      </div>
+      <div className="bag-help">
+        Arraste itens para a trilha · clique num item da trilha para remover · clique numa onda já conectada para cortar a trilha ali
+      </div>
+      <div className="bag-actions">
+        <button className="btn ghost" disabled={!p.canUndo} onClick={p.undo} title="Ctrl/Cmd+Z">↶ Desfazer</button>
+        <button
+          className="btn ghost"
+          disabled={!plan.floors[floorIdx].steps.length && !plan.floors[floorIdx].stairs}
+          onClick={() => {
+            const floors = plan.floors.slice(0, floorIdx + 1).map((f, i) => (i === floorIdx ? { steps: [], stairs: null } : f))
+            p.commit({ ...plan, floors })
+          }}
+        >
+          Limpar andar
+        </button>
+      </div>
+    </footer>
+  )
+}

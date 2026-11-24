@@ -1,0 +1,49 @@
+import { useCallback, useEffect, useState } from 'react'
+import { ITEMS, POTION_SLOTS, STARTING_GOLD, WEAPON_SLOTS, type ItemId } from './data'
+import type { Save } from './plan'
+
+const KEY = 'dungeonbend-adventure:save:v1'
+
+export function defaultSave(): Save {
+  const stock = Object.fromEntries(Object.keys(ITEMS).map((k) => [k, 0])) as Record<ItemId, number>
+  stock.potion_s = 2
+  stock.potion_m = 1
+  stock.cleaver = 1
+  return {
+    gold: STARTING_GOLD,
+    stock,
+    loadout: { potions: ['potion_s', 'potion_s', 'potion_m'], weapons: ['cleaver', null] },
+    cards: {},
+    plan: null,
+  }
+}
+
+function load(): Save {
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (!raw) return defaultSave()
+    const s = JSON.parse(raw) as Save
+    const d = defaultSave()
+    return {
+      ...d,
+      ...s,
+      stock: { ...d.stock, ...s.stock },
+      loadout: {
+        potions: Array.from({ length: POTION_SLOTS }, (_, i) => s.loadout?.potions?.[i] ?? null),
+        weapons: Array.from({ length: WEAPON_SLOTS }, (_, i) => s.loadout?.weapons?.[i] ?? null),
+      },
+    }
+  } catch {
+    return defaultSave()
+  }
+}
+
+export function useSave() {
+  const [save, setSave] = useState<Save>(load)
+  useEffect(() => {
+    localStorage.setItem(KEY, JSON.stringify(save))
+  }, [save])
+  const update = useCallback((fn: (s: Save) => Save) => setSave(fn), [])
+  const reset = useCallback(() => setSave(defaultSave()), [])
+  return { save, update, reset }
+}

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="st" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b9b1a6"/><stop offset="1" stop-color="#7c746b"/></linearGradient>
+    <radialGradient id="hole" cx=".5" cy=".3" r=".7"><stop offset="0" stop-color="#fff3c4" stop-opacity=".9"/><stop offset=".5" stop-color="#e0b86a" stop-opacity=".35"/><stop offset="1" stop-color="#e0b86a" stop-opacity="0"/></radialGradient>
+  </defs>
+  <ellipse cx="64" cy="112" rx="50" ry="9" fill="#000" opacity=".3"/>
+  <!-- arco / abertura de luz -->
+  <path d="M30 104V44c0-19 15-32 34-32s34 13 34 32v60z" fill="#2a2420" stroke="#1a1512" stroke-width="4"/>
+  <path d="M38 104V46c0-15 11-25 26-25s26 10 26 25v58z" fill="url(#hole)"/>
+  <!-- degraus -->
+  <g stroke="#2b2622" stroke-width="3.5" stroke-linejoin="round">
+    <path d="M22 108h84v-14H22z" fill="url(#st)"/>
+    <path d="M30 94h68V81H30z" fill="url(#st)"/>
+    <path d="M38 81h52V69H38z" fill="url(#st)"/>
+    <path d="M45 69h38V58H45z" fill="url(#st)"/>
+  </g>
+  <g stroke="#e6ded2" stroke-width="2" opacity=".6"><path d="M25 97h78M33 84h62M41 72h46M48 61h32"/></g>
+  <!-- seta para cima -->
+  <path d="M64 14l20 22H73v14H55V36H44z" fill="#ffd25a" stroke="#3a2a10" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

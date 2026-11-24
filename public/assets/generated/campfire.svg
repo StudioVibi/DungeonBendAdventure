@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="log" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b07a45"/><stop offset="1" stop-color="#6b4220"/></linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".62" r=".5"><stop offset="0" stop-color="#ffb347" stop-opacity=".55"/><stop offset="1" stop-color="#ffb347" stop-opacity="0"/></radialGradient>
+    <linearGradient id="flame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#e8401c"/><stop offset=".55" stop-color="#ff9a1f"/><stop offset="1" stop-color="#ffe36b"/></linearGradient>
+  </defs>
+  <circle cx="64" cy="76" r="60" fill="url(#glow)"/>
+  <ellipse cx="64" cy="106" rx="44" ry="9" fill="#000" opacity=".28"/>
+  <!-- pedras -->
+  <g stroke="#2b2622" stroke-width="3">
+    <ellipse cx="26" cy="100" rx="11" ry="8" fill="#8c8580"/><ellipse cx="102" cy="100" rx="11" ry="8" fill="#7d7672"/>
+    <ellipse cx="45" cy="107" rx="10" ry="7" fill="#9a938d"/><ellipse cx="83" cy="107" rx="10" ry="7" fill="#8c8580"/>
+  </g>
+  <!-- chamas -->
+  <path d="M64 18c10 16 26 26 24 50-1 15-11 25-24 25S39 83 40 68c1-11 8-16 10-26 4 7 4 12 9 15-2-14 1-27 5-39z" fill="url(#flame)" stroke="#2b1a10" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M64 50c6 9 13 14 12 26-1 8-6 12-12 12s-12-4-12-12c0-7 5-10 7-15 2 4 3 6 5 7 0-7-1-12 0-18z" fill="#fff2a8"/>
+  <!-- toras cruzadas -->
+  <g stroke="#2b1a10" stroke-width="3.5" stroke-linejoin="round">
+    <rect x="18" y="82" width="92" height="17" rx="8.5" transform="rotate(-16 64 90)" fill="url(#log)"/>
+    <rect x="18" y="82" width="92" height="17" rx="8.5" transform="rotate(16 64 90)" fill="url(#log)"/>
+  </g>
+  <g fill="#e9c08a" stroke="#2b1a10" stroke-width="2.5">
+    <ellipse cx="23" cy="102" rx="5" ry="8" transform="rotate(-16 23 102)"/>
+    <ellipse cx="105" cy="102" rx="5" ry="8" transform="rotate(16 105 102)"/>
+  </g>
+  <g stroke="#5a3519" stroke-width="2" stroke-linecap="round" opacity=".7">
+    <path d="M40 84l20-6M70 79l18 5"/>
+  </g>
+</svg>
