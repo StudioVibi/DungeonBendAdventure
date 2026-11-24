@@ -40,7 +40,9 @@ export default function App() {
   const { save, update, reset } = useSave()
   const now = useNow()
   const [screen, setScreen] = useState<Screen>('select')
-  const [prevScreen, setPrevScreen] = useState<Screen>('select')
+  /** pilha de navegação (ex.: dungeon → loja → coleção, e volta na ordem) */
+  const [stack, setStack] = useState<Screen[]>([])
+  const prevScreen = stack[stack.length - 1] ?? 'select'
   const [active, setActive] = useState<DungeonId | null>(null)
   const [floorIdx, setFloorIdxRaw] = useState(0)
   const [report, setReport] = useState<ReportState | null>(null)
@@ -90,7 +92,7 @@ export default function App() {
   }, [setPlan])
 
   const go = (to: Screen) => {
-    setPrevScreen(screen)
+    setStack((st) => (to === 'select' ? [] : [...st, screen].slice(-10)))
     setScreen(to)
   }
 
@@ -220,8 +222,13 @@ export default function App() {
     return () => document.removeEventListener('click', onClick)
   }, [])
 
-  const backLabel = prevScreen === 'dungeon' && plan ? 'Voltar à dungeon' : 'Voltar'
-  const back = () => (prevScreen === 'dungeon' && active && plan ? openDungeon(active) : setScreen('select'))
+  const backLabel = prevScreen === 'dungeon' && plan ? 'Voltar à dungeon' : prevScreen === 'shop' ? 'Voltar à loja' : 'Voltar'
+  const back = () => {
+    const prev = prevScreen
+    setStack((st) => st.slice(0, -1))
+    if (prev === 'dungeon' && active && plan) openDungeon(active)
+    else setScreen(prev === 'dungeon' ? 'select' : prev)
+  }
 
   const resultRun = report?.mode === 'result' ? save.runs.find((r) => r.id === report.runId) : undefined
   const queueStart = nextStartAt(save.runs, now, save.hospitalUntil)
@@ -272,7 +279,7 @@ export default function App() {
           onFinish={() => setReport({ mode: 'preview', sim: simulate(plan) })}
         />
       )}
-      {screen === 'shop' && <ShopScreen save={save} update={update} onBack={back} backLabel={backLabel} />}
+      {screen === 'shop' && <ShopScreen save={save} update={update} onBack={back} backLabel={backLabel} onCollection={() => go('collection')} />}
       {screen === 'collection' && (
         <CollectionScreen
           save={save}

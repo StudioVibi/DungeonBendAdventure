@@ -14,7 +14,13 @@ import { Gold, HeartIcon } from './ui'
 
 // ---------------- Loja ----------------
 
-export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => void; onBack: () => void; backLabel: string }) {
+export function ShopScreen(p: {
+  save: Save
+  update: (fn: (s: Save) => Save) => void
+  onBack: () => void
+  backLabel: string
+  onCollection: () => void
+}) {
   const { save, update } = p
   const buy = (id: ItemId) =>
     update((s) => {
@@ -133,23 +139,31 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
       </main>
 
       <footer className="shop-toolbar">
-        <div className="tb-group">
-          <div className="bag-label">Poções na mochila</div>
-          <div className="slots">{save.loadout.potions.map((id, i) => slot(id, 'potions', i))}</div>
-        </div>
-        <div className="tb-group">
-          <div className="bag-label">Armas na mochila</div>
-          <div className="slots">{save.loadout.weapons.map((id, i) => slot(id, 'weapons', i))}</div>
-        </div>
-        <div className="tb-group tb-inventory">
-          <div className="bag-label">Seus itens · clique para levar</div>
+        {/* leque de cartas: entra na coleção */}
+        <button className="tb-cards" onClick={p.onCollection} title="Ver a coleção de cartas">
+          <span className="card-fan">
+            {(['bat', 'rat', 'slime_green'] as MonsterId[]).map((m, i) => (
+              <span key={m} className={`fan-card c${i}`}>
+                <img src={MONSTERS[m].sprite} alt="" draggable={false} />
+              </span>
+            ))}
+          </span>
+          <span className="tb-title">Coleção</span>
+        </button>
+
+        {/* armazém: itens que o jogador possui (clique leva para a mochila) */}
+        <div className="tb-storage">
+          <div className="tb-storage-head">
+            <img src="/assets/generated/chest.svg" alt="" draggable={false} />
+            <span className="tb-title">Armazém</span>
+          </div>
           <div className="tb-owned">
-            {owned.length === 0 && <span className="muted small">Nada ainda — compre na estante.</span>}
+            {owned.length === 0 && <span className="muted small">vazio</span>}
             {owned.map((id) => {
               const eq = equippedCount(save, id)
               const full = eq >= save.stock[id]
               return (
-                <button key={id} className={`tb-own ${full ? 'full' : ''}`} onClick={() => equip(id)} disabled={full} title={full ? 'Todos já estão na mochila' : `Levar ${ITEMS[id].name}`}>
+                <button key={id} className={`tb-own ${full ? 'full' : ''}`} onClick={() => equip(id)} disabled={full} title={full ? `${ITEMS[id].name}: todos já estão na mochila` : `${ITEMS[id].name}: levar na mochila`}>
                   <img src={ITEMS[id].icon} alt="" draggable={false} />
                   <b>{eq}/{save.stock[id]}</b>
                 </button>
@@ -157,7 +171,17 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
             })}
           </div>
         </div>
-        <p className="tb-help">A mochila renova a cada andar. Poções dos slots usados são gastas ao fim da run; armas ficam.</p>
+
+        <div className="tb-bag">
+          <div className="tb-group">
+            <div className="bag-label">Poções na mochila</div>
+            <div className="slots">{save.loadout.potions.map((id, i) => slot(id, 'potions', i))}</div>
+          </div>
+          <div className="tb-group">
+            <div className="bag-label">Armas na mochila</div>
+            <div className="slots">{save.loadout.weapons.map((id, i) => slot(id, 'weapons', i))}</div>
+          </div>
+        </div>
       </footer>
     </div>
   )

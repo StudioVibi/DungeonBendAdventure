@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 112">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b07a45"/><stop offset="1" stop-color="#8a5a32"/></linearGradient>
+    <linearGradient id="lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c48a52"/><stop offset="1" stop-color="#9c6a3c"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe08a"/><stop offset="1" stop-color="#d9a032"/></linearGradient>
+  </defs>
+  <ellipse cx="64" cy="104" rx="52" ry="7" fill="#000" opacity=".3"/>
+  <!-- corpo -->
+  <rect x="12" y="50" width="104" height="52" rx="6" fill="url(#wood)" stroke="#2a1d16" stroke-width="5"/>
+  <path d="M16 68h96M16 86h96" stroke="#6b4423" stroke-width="3"/>
+  <!-- tampa arredondada -->
+  <path d="M12 54 V38 Q12 14 64 14 Q116 14 116 38 V54 Z" fill="url(#lid)" stroke="#2a1d16" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M22 30 Q64 18 106 30" fill="none" stroke="#e2b07a" stroke-width="3" stroke-linecap="round" opacity=".7"/>
+  <!-- ferragens douradas -->
+  <path d="M30 16 V102 M98 16 V102" stroke="#2a1d16" stroke-width="13"/>
+  <path d="M30 16 V102 M98 16 V102" stroke="url(#gold)" stroke-width="7"/>
+  <rect x="10" y="48" width="108" height="10" rx="4" fill="url(#gold)" stroke="#2a1d16" stroke-width="4"/>
+  <!-- fechadura -->
+  <rect x="52" y="44" width="24" height="28" rx="5" fill="url(#gold)" stroke="#2a1d16" stroke-width="4"/>
+  <circle cx="64" cy="55" r="4" fill="#2a1d16"/><path d="M64 57v8" stroke="#2a1d16" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="30" cy="80" r="3" fill="#7a4a12"/><circle cx="98" cy="80" r="3" fill="#7a4a12"/>
+</svg>
