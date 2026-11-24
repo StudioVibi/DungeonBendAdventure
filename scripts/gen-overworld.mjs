@@ -110,6 +110,15 @@ const svg = (w, h, body, defs = '') =>
       ${treeline}${tufts}${flowers}${roadSvg}${rocks}
       ${treeSvg}`, defs),
   )
+  // só a planície (tela de carregamento)
+  writeFileSync(
+    new URL('plain-empty.svg', OUT),
+    svg(W, H, `<rect width="${W}" height="${H}" fill="url(#sky)"/>${clouds}${far}
+      <path d="M0 272Q400 255 800 268T1600 266V${H}H0Z" fill="url(#plain)"/>
+      <rect y="270" width="${W}" height="${H - 270}" filter="url(#gn)"/>
+      ${treeline}${tufts}${flowers}${rocks}
+      ${treeSvg}`, defs),
+  )
 }
 
 // ---------------- caverna ----------------

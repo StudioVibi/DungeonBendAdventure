@@ -10,7 +10,7 @@ const IMAGES = [
   CAMPFIRE_ICON,
   STAIRS_ICON,
   GOLD_ICON,
-  ...['plain', 'caverna', 'cripta', 'jardim', 'shop'].map((n) => `/assets/generated/overworld/${n}.svg`),
+  ...['plain', 'plain-empty', 'caverna', 'cripta', 'jardim', 'shop'].map((n) => `/assets/generated/overworld/${n}.svg`),
 ]
 
 const AUDIO = [
@@ -72,15 +72,17 @@ export function Loading({ onDone }: { onDone: () => void }) {
           DungeonBend <span>Adventure</span>
         </div>
         <HeroImg size={150} />
-        <div className="loading-bar">
-          <div style={{ width: `${pct * 100}%` }} />
-        </div>
         {ready ? (
-          <button className="pc-cta loading-go" onClick={go} autoFocus>
-            Clique para entrar
+          <button className="loading-go" onClick={go} autoFocus>
+            Entrar
           </button>
         ) : (
-          <div className="loading-pct">Carregando… {Math.round(pct * 100)}%</div>
+          <>
+            <div className="loading-bar">
+              <div style={{ width: `${pct * 100}%` }} />
+            </div>
+            <div className="loading-pct">Carregando… {Math.round(pct * 100)}%</div>
+          </>
         )}
         <p className="loading-tip">{tip}</p>
       </div>
