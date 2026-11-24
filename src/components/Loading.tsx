@@ -75,10 +75,11 @@ export function Loading({ onDone }: { onDone: () => void }) {
 
   return (
     <div className={`loading ${leaving ? 'leaving' : ''}`}>
+      <h1 className="loading-title">
+        <span className="lt-main">DungeonBend</span>
+        <span className="lt-sub">Adventure</span>
+      </h1>
       <div className="loading-card">
-        <div className="loading-logo">
-          DungeonBend <span>Adventure</span>
-        </div>
         <HeroImg size={150} />
         {ready ? (
           <button className="loading-go" onClick={go}>
