@@ -48,7 +48,14 @@ export function Loading({ onDone }: { onDone: () => void }) {
     }
   }, [])
 
-  const ready = done >= total
+  // a frase só entra depois do motion do título (DungeonBend .8s + Adventure .65s→1.35s)
+  const [titleDone, setTitleDone] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setTitleDone(true), 1450)
+    return () => clearTimeout(t)
+  }, [])
+  const ready = done >= total && titleDone
+  const loaded = done >= total
   const pct = Math.min(1, done / total)
   const started = useRef(false)
   // pronto: qualquer clique ou tecla começa
@@ -77,7 +84,7 @@ export function Loading({ onDone }: { onDone: () => void }) {
       <div className="loading-foot">
         {ready ? (
           <p className="loading-start">Clique ou aperte qualquer botão para começar</p>
-        ) : (
+        ) : loaded ? null : (
           <>
             <div className="loading-bar">
               <div style={{ width: `${pct * 100}%` }} />

@@ -518,6 +518,7 @@ h3, h4 { margin: .4em 0; }
 .loading-foot { position: absolute; left: 0; right: 0; bottom: 9vh; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .loading-start {
   margin: 0; font-size: 18px; font-weight: 700; letter-spacing: .04em; color: #fff6e6;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, .7); animation: fade .5s, breathe 2.4s ease-in-out .5s infinite;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .7); animation: fade .5s, start-pulse 2s ease-in-out .5s infinite;
 }
 .loading { cursor: pointer; }
+@keyframes start-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(1.05); } }
