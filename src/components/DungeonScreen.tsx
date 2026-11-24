@@ -489,7 +489,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
         title={`${it.name} — ${usedHere ? 'já usado neste andar (renova no próximo)' : 'arraste para a trilha'}`}
       >
         <img className="item-art" src={it.icon} alt="" draggable={false} />
-        <span className={`slot-val ${isPotion(tool) ? 'heal' : 'dmg'}`}>{isPotion(tool) ? `+${it.value}` : `⚔${it.value}`}</span>
+        <span className={`slot-val ${isPotion(tool) ? 'heal' : 'dmg'}`}>{isPotion(tool) ? `+${it.value}` : `${it.value}`}</span>
         {usedHere && <span className="slot-flag">usado</span>}
       </div>
     )

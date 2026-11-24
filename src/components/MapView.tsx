@@ -375,7 +375,7 @@ export function MapView(p: Props) {
                   {isWeapon(tool) ? (
                     <g transform="translate(0 34)">
                       <rect x={-20} y={-10} width={40} height={20} rx={10} className="weapon-pill" />
-                      <text y={1} textAnchor="middle" dominantBaseline="middle" className="weapon-text">⚔{ITEMS[tool].value}</text>
+                      <text y={1} textAnchor="middle" dominantBaseline="middle" className="weapon-text">{ITEMS[tool].value}</text>
                     </g>
                   ) : (
                     res && (
