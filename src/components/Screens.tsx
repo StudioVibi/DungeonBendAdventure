@@ -12,7 +12,7 @@ import {
   type PotionId,
   type WeaponId,
 } from '../game/data'
-import { formatTime, parseCardKey, runStatus, type Run, type Save, type SimResult } from '../game/plan'
+import { formatTime, mergeCards, runStatus, type Run, type Save, type SimResult } from '../game/plan'
 import { Gold, HeartIcon, HeroImg, MonsterHeadBadge } from './ui'
 
 // ---------------- Seleção de dungeon ----------------
@@ -249,11 +249,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
 // ---------------- Coleção ----------------
 
 export function CollectionScreen(p: { save: Save; onBack: () => void; backLabel: string; onReset: () => void }) {
-  const byMonster: Partial<Record<MonsterId, { level: number; n: number }[]>> = {}
-  for (const [k, n] of Object.entries(p.save.cards)) {
-    const { monster, level } = parseCardKey(k)
-    ;(byMonster[monster] ??= []).push({ level, n })
-  }
+  const cards = mergeCards(p.save.cards)
   const total = Object.values(p.save.cards).reduce((a, b) => a + b, 0)
   return (
     <div className="screen collection-screen">
@@ -271,18 +267,12 @@ export function CollectionScreen(p: { save: Save; onBack: () => void; backLabel:
       <div className="cards-grid">
         {(Object.keys(MONSTERS) as MonsterId[]).map((id) => {
           const m = MONSTERS[id]
-          const levels = (byMonster[id] ?? []).sort((a, b) => a.level - b.level)
-          const count = levels.reduce((a, b) => a + b.n, 0)
+          const count = cards[id] ?? 0
           return (
             <div key={id} className={`monster-card ${count ? '' : 'locked'}`}>
               <div className="mc-art"><img src={m.sprite} alt="" /></div>
               <div className="mc-name">{count ? m.name : '???'}</div>
               <div className="mc-count">x{count}</div>
-              <div className="mc-levels">
-                {levels.map((l) => (
-                  <span key={l.level} className="lvl">Nv{l.level} ×{l.n}</span>
-                ))}
-              </div>
             </div>
           )
         })}
@@ -304,7 +294,7 @@ export function ReportModal(p: {
 }) {
   const { sim } = p
   const preview = p.mode === 'preview'
-  const kills = Object.entries(sim.kills).map(([k, n]) => ({ ...parseCardKey(k), n }))
+  const kills = Object.entries(mergeCards(sim.kills)).map(([k, n]) => ({ monster: k as MonsterId, n }))
   const potions = Object.entries(sim.potionsUsed) as [PotionId, number][]
   const title = preview ? (sim.alive ? 'Pronto para a run' : 'Essa trilha mata o Alberto') : sim.alive ? 'Saiu vivo!' : 'Alberto caiu…'
   return (
@@ -330,10 +320,9 @@ export function ReportModal(p: {
         ) : (
           <div className="report-cards">
             {kills.map((k) => (
-              <div key={`${k.monster}:${k.level}`} className="mini-card">
+              <div key={k.monster} className="mini-card">
                 <img src={MONSTERS[k.monster].sprite} alt="" />
                 <span className="mini-name">{MONSTERS[k.monster].name}</span>
-                <span className="mini-lvl">Nv{k.level}</span>
                 <span className="mini-n">×{k.n}</span>
               </div>
             ))}

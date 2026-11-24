@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ITEMS, POTION_SLOTS, STARTING_GOLD, WEAPON_SLOTS, type ItemId } from './data'
-import type { Plan, Save } from './plan'
+import { mergeCards, type Plan, type Save } from './plan'
 
 const KEY = 'dungeonbend-adventure:save:v1'
 
@@ -43,6 +43,7 @@ function load(): Save {
     delete s.plan
     s.plans ??= {}
     s.runs ??= []
+    s.cards = mergeCards(s.cards ?? {})
     return normalizeLoadout({
       ...d,
       ...s,

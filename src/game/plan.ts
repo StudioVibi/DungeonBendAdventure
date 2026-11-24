@@ -44,7 +44,7 @@ export interface Save {
   gold: number
   stock: Record<ItemId, number>
   loadout: Loadout
-  /** chave `${monsterId}:${level}` → quantidade de cartas */
+  /** monsterId → quantidade de cartas (o nível não distingue a carta) */
   cards: Record<string, number>
   /** rascunho de trilha de cada dungeon (ainda não iniciada) */
   plans: Partial<Record<DungeonId, Plan>>
@@ -284,8 +284,7 @@ export function simulate(plan: Plan): SimResult {
           wavesCleared++
           goldLoot += waveGold(wave)
           for (const m of wave.monsters) {
-            const k = `${m}:${wave.level}`
-            kills[k] = (kills[k] ?? 0) + 1
+            kills[m] = (kills[m] ?? 0) + 1
           }
         }
       }
@@ -315,10 +314,14 @@ export function simulate(plan: Plan): SimResult {
   }
 }
 
-export const cardKey = (m: MonsterId, level: number) => `${m}:${level}`
-export const parseCardKey = (k: string) => {
-  const [m, l] = k.split(':')
-  return { monster: m as MonsterId, level: Number(l) }
+/** Aceita a chave antiga `monstro:nível` e devolve só o monstro. */
+export const cardMonster = (k: string) => k.split(':')[0] as MonsterId
+
+/** Soma cartas por monstro (ignorando nível de chaves antigas). */
+export function mergeCards(...sources: Record<string, number>[]) {
+  const out: Record<string, number> = {}
+  for (const src of sources) for (const [k, n] of Object.entries(src)) out[cardMonster(k)] = (out[cardMonster(k)] ?? 0) + n
+  return out
 }
 
 export function formatTime(totalSeconds: number) {

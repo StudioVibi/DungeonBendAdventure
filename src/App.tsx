@@ -3,6 +3,7 @@ import { DungeonScreen } from './components/DungeonScreen'
 import { CollectionScreen, ReportModal, SelectScreen, ShopScreen } from './components/Screens'
 import { dungeonById, type DungeonId, type PotionId } from './game/data'
 import {
+  mergeCards,
   nextStartAt,
   newPlan,
   retime,
@@ -140,8 +141,7 @@ export default function App() {
     if (!run) return
     const r = run.result
     update((s) => {
-      const cards = { ...s.cards }
-      for (const [k, n] of Object.entries(r.kills)) cards[k] = (cards[k] ?? 0) + n
+      const cards = mergeCards(s.cards, r.kills)
       return { ...s, gold: s.gold + r.gold, cards, runs: s.runs.filter((x) => x.id !== runId) }
     })
     setReport(null)
