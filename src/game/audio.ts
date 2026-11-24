@@ -83,7 +83,7 @@ function load(name: string): Promise<AudioBuffer | null> {
 function unlock() {
   const c = ensureCtx()
   if (c.state === 'suspended') void c.resume()
-  if (wantedMusic && current?.name !== wantedMusic) void startMusic(wantedMusic)
+  if (wantedMusic && current?.name !== wantedMusic) startMusic(wantedMusic).catch((err) => console.warn('[audio] music', err))
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('pointerdown', unlock, { capture: true })
@@ -99,6 +99,14 @@ interface PlayOpts {
 }
 
 export function play(name: SoundName, opts: PlayOpts = {}) {
+  try {
+    playUnsafe(name, opts)
+  } catch (err) {
+    console.warn('[audio]', name, err)
+  }
+}
+
+function playUnsafe(name: SoundName, opts: PlayOpts) {
   if (!ctx || ctx.state !== 'running') return
   const def = CATALOG[name]
   const buf = buffers.get(name)
@@ -117,14 +125,15 @@ export function play(name: SoundName, opts: PlayOpts = {}) {
     g.gain.setValueAtTime(level, t0 + def.fade.start)
     g.gain.linearRampToValueAtTime(0.0001, t0 + def.fade.start + def.fade.dur)
   }
+  src.connect(g).connect(sfxBus)
+  // start ANTES de stop: chamar stop() num source não iniciado lança InvalidStateError
+  src.start(t0)
   if (opts.stopAfter !== undefined) {
     const end = t0 + opts.stopAfter
     g.gain.setValueAtTime(level, Math.max(t0 + 0.013, end - 0.12))
     g.gain.linearRampToValueAtTime(0.0001, end)
     src.stop(end + 0.02)
   }
-  src.connect(g).connect(sfxBus)
-  src.start(t0)
 }
 
 async function startMusic(name: MusicName) {
@@ -164,7 +173,7 @@ export function setMusic(name: MusicName | null) {
     }
     return
   }
-  void startMusic(name)
+  startMusic(name).catch((err) => console.warn('[audio] music', err))
 }
 
 /** Som de construção da estrada: arrasta enquanto a trilha se desenha e bate na chegada. */
