@@ -1,0 +1,9 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #12101a;
+  color: #eee;
+}
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; }
+.app { height: 100%; display: grid; place-items: center; }
