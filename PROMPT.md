@@ -1,14 +1,27 @@
 # Prompt one-shot — DungeonBend Adventure
 
-> Cole este prompt num harness junto com o `Rules.md`. Toda a mecânica (números, limites, fórmulas) está em `Rules.md`. Este prompt descreve o **conceito** (core loop, estados) e o **conteúdo** (assets reaproveitados e o que precisa ser gerado).
+> Cole este prompt num harness junto com `Rules.md`, `TUNING.md` e `IDEIAS.md`:
+> - **`Rules.md`:** as regras de comportamento (leis).
+> - **`TUNING.md`:** os valores numéricos.
+> - **`IDEIAS.md`:** decisões de implementação atuais, revisáveis, que não são leis.
+>
+> Este prompt descreve o **conceito** (núcleo, core loop, estados) e o **conteúdo** (assets reaproveitados e o que precisa ser gerado).
 
 ---
 
-Crie **DungeonBend Adventure**, um minigame web offline (TypeScript + React + Vite, sem backend; save em `localStorage`) derivado do jogo **DungeonBend**, que reaproveita assets dele. Implemente **todas** as regras de `Rules.md` exatamente como estão escritas. Interface em português, com termos curtos de estado em inglês ("Survives", "Deficit", "floor", "wave", "damage").
+Crie **DungeonBend Adventure**, um minigame web offline (TypeScript + React + Vite, sem backend; save em `localStorage`) derivado do jogo **DungeonBend**, que reaproveita assets dele. Implemente **todas** as regras de `Rules.md` exatamente como estão escritas, com os valores de `TUNING.md`. Onde as regras não definirem um comportamento, siga `IDEIAS.md`. Interface em português, com termos curtos de estado em inglês ("Survives", "Deficit", "floor", "wave", "damage").
 
 ## Conceito
 
 O jogador não controla o combate: ele **planeja**. Num mapa interativo de dungeon, liga ondas de monstros com trilhas, distribui recursos (poções, armas, fogueira) ao longo do caminho e vê, a cada interação, quanto de vida o herói Alberto terá em cada ponto. Quando o plano fecha sem déficit (ou o jogador aceita o risco), ele inicia a run. A run leva **tempo real**, proporcional ao plano, e devolve ouro e cartas colecionáveis. O desafio é equilibrar ambição (mais ondas, andares mais altos, mais ouro) com recursos limitados e o custo de tempo e de morte (hospital).
+
+### Núcleo
+
+- O Alberto começa cada run com a vida cheia, e a vida segue de uma onda para a outra e de um andar para o seguinte.
+- Cada onda tira dele a soma da vida dos monstros dela, menos o dano das armas colocadas no trecho anterior.
+- Poções curam, e o descanso cura com custo de tempo.
+- Se a vida chega a zero ou menos depois de uma onda, ele morre ali.
+- O plano mostra onde isso acontece e quanto falta de vida (o déficit), para o jogador redistribuir recursos antes de iniciar a run.
 
 ### Core loop
 
@@ -91,7 +104,7 @@ Origem: o repositório `DungeonBend` (pasta irmã). As imagens são convertidas 
 | Botão back | `assets/audio/sfx/deck_card_remove.mp3` | `public/assets/audio/sfx/back.mp3` |
 | Botão buy | `assets/audio/sfx/upgrade_button.mp3` | `public/assets/audio/sfx/buy.mp3` |
 
-**Dados portados** (ver `Rules.md` para as tabelas):
+**Dados portados** (as tabelas estão em `TUNING.md`):
 - HP e ouro dos monstros: `data/game/monsters.json` + `data/game/statlines.json`, assados por `scripts/dungeon-data.ts`.
 - Vida do Alberto: `data/game/heroes.json`.
 - Cura das poções: `data/game/potions.json`.
@@ -143,7 +156,7 @@ Todos ficam em `public/assets/generated/` e `public/assets/audio/`, gerados por 
 
 ## Critérios de pronto
 
-- Todas as regras de `Rules.md` se comportam exatamente como descritas. Valide no exemplo de referência: 4 Bat + 3 Rat no nível 1 = 22 de dano e matam o Alberto (15 de vida).
+- Todas as regras de `Rules.md` se comportam exatamente como descritas, com os valores de `TUNING.md`. Valide no exemplo de referência: 4 Bat + 3 Rat no nível 1 = 22 de dano e matam o Alberto (15 de vida).
 - Nenhum feedback de hover pode alterar o layout. Deltas e prévias flutuam sobre o conteúdo; mudar o tamanho de algo sob o mouse cria loop de hover e faz a tela tremer.
 - Nenhum erro de áudio pode derrubar o jogo.
 - `npm run build` passa sem erros de tipo.
