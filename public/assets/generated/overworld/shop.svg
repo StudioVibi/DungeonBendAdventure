@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 256" width="320" height="256"><defs></defs>
+    <ellipse cx="160" cy="236" rx="150" ry="16" fill="#000" opacity=".22"/>
+    <!-- postes -->
+    <rect x="34" y="76" width="14" height="160" rx="3" fill="#8a5a32" stroke="#2a1d16" stroke-width="4"/>
+    <rect x="272" y="76" width="14" height="160" rx="3" fill="#8a5a32" stroke="#2a1d16" stroke-width="4"/>
+    <!-- toldo listrado -->
+    <path d="M14 118 L40 60 H280 L306 118 Z" fill="#c8453c" stroke="#2a1d16" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M30 70 L46 70 L50 118 L30 118 Z" fill="#c8453c"/><path d="M62 70 L78 70 L82 118 L62 118 Z" fill="#f3e3c3"/><path d="M94 70 L110 70 L114 118 L94 118 Z" fill="#c8453c"/><path d="M126 70 L142 70 L146 118 L126 118 Z" fill="#f3e3c3"/><path d="M158 70 L174 70 L178 118 L158 118 Z" fill="#c8453c"/><path d="M190 70 L206 70 L210 118 L190 118 Z" fill="#f3e3c3"/><path d="M222 70 L238 70 L242 118 L222 118 Z" fill="#c8453c"/><path d="M254 70 L270 70 L274 118 L254 118 Z" fill="#f3e3c3"/>
+    <path d="M14 118 L40 60 H280 L306 118 Z" fill="none" stroke="#2a1d16" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M22 116 q15 22 31 0" fill="#c8453c" stroke="#2a1d16" stroke-width="4"/><path d="M53 116 q15 22 31 0" fill="#f3e3c3" stroke="#2a1d16" stroke-width="4"/><path d="M84 116 q15 22 31 0" fill="#c8453c" stroke="#2a1d16" stroke-width="4"/><path d="M115 116 q15 22 31 0" fill="#f3e3c3" stroke="#2a1d16" stroke-width="4"/><path d="M146 116 q15 22 31 0" fill="#c8453c" stroke="#2a1d16" stroke-width="4"/><path d="M177 116 q15 22 31 0" fill="#f3e3c3" stroke="#2a1d16" stroke-width="4"/><path d="M208 116 q15 22 31 0" fill="#c8453c" stroke="#2a1d16" stroke-width="4"/><path d="M239 116 q15 22 31 0" fill="#f3e3c3" stroke="#2a1d16" stroke-width="4"/><path d="M270 116 q15 22 31 0" fill="#c8453c" stroke="#2a1d16" stroke-width="4"/>
+    <!-- placa com moeda -->
+    <path d="M160 60 V34" stroke="#2a1d16" stroke-width="4"/>
+    <circle cx="160" cy="26" r="20" fill="#ffd25a" stroke="#2a1d16" stroke-width="4"/><circle cx="160" cy="26" r="12" fill="none" stroke="#c98a1a" stroke-width="3"/>
+    <!-- balcão -->
+    <rect x="40" y="168" width="240" height="68" rx="6" fill="#a0703f" stroke="#2a1d16" stroke-width="5"/>
+    <rect x="32" y="158" width="256" height="18" rx="5" fill="#bf8a52" stroke="#2a1d16" stroke-width="5"/>
+    <path d="M60 190 h200 M60 212 h200" stroke="#7d5330" stroke-width="3"/>
+    <g transform="translate(80 158) scale(1)"><rect x="-4" y="-26" width="8" height="10" fill="#8a5a32" stroke="#2a1d16" stroke-width="2.5"/><path d="M-10 -16 h20 v4 a12 12 0 1 1 -20 0z" fill="#e0474c" stroke="#2a1d16" stroke-width="3"/><circle cx="-3" cy="-4" r="3" fill="#fff" opacity=".6"/></g><g transform="translate(108 158) scale(1.2)"><rect x="-4" y="-26" width="8" height="10" fill="#8a5a32" stroke="#2a1d16" stroke-width="2.5"/><path d="M-10 -16 h20 v4 a12 12 0 1 1 -20 0z" fill="#e0474c" stroke="#2a1d16" stroke-width="3"/><circle cx="-3" cy="-4" r="3" fill="#fff" opacity=".6"/></g><g transform="translate(140 158) scale(0.9)"><rect x="-4" y="-26" width="8" height="10" fill="#8a5a32" stroke="#2a1d16" stroke-width="2.5"/><path d="M-10 -16 h20 v4 a12 12 0 1 1 -20 0z" fill="#4a7fd6" stroke="#2a1d16" stroke-width="3"/><circle cx="-3" cy="-4" r="3" fill="#fff" opacity=".6"/></g>
+    <!-- espada e cutelo no balcão -->
+    <path d="M190 156 l60 -40" stroke="#cfd6e6" stroke-width="7" stroke-linecap="round"/><path d="M190 156 l60 -40" stroke="#2a1d16" stroke-width="2" stroke-linecap="round" opacity=".5"/>
+    <path d="M184 160 l14 -9 M188 150 l6 10" stroke="#6b4423" stroke-width="6" stroke-linecap="round"/>
+    <!-- caixotes e saco -->
+    <rect x="252" y="196" width="50" height="42" rx="3" fill="#b07a45" stroke="#2a1d16" stroke-width="4"/><path d="M252 196 l50 42 M302 196 l-50 42" stroke="#7d5330" stroke-width="3"/>
+    <path d="M10 238 q-6 -40 22 -46 q28 6 22 46z" fill="#d8c49a" stroke="#2a1d16" stroke-width="4"/><path d="M22 196 q10 6 20 0" stroke="#2a1d16" stroke-width="3" fill="none"/></svg>

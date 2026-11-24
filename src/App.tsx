@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DungeonScreen } from './components/DungeonScreen'
-import { CollectionScreen, ReportModal, SelectScreen, ShopScreen } from './components/Screens'
+import { CollectionScreen, ReportModal, ShopScreen } from './components/Screens'
+import { MainMenu } from './components/MainMenu'
+import { Loading } from './components/Loading'
 import { dungeonById, type DungeonId, type PotionId } from './game/data'
 import {
   mergeCards,
@@ -43,6 +45,7 @@ export default function App() {
   const [floorIdx, setFloorIdxRaw] = useState(0)
   const [report, setReport] = useState<ReportState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [booted, setBooted] = useState(false)
   const history = useRef<Plan[]>([])
   const [, force] = useState(0)
 
@@ -224,10 +227,12 @@ export default function App() {
   const queueStart = nextStartAt(save.runs, now, save.hospitalUntil)
   const hospital = hospitalizedUntil(save, now)
 
+  if (!booted) return <Loading onDone={() => setBooted(true)} />
+
   return (
     <>
       {screen === 'select' && (
-        <SelectScreen
+        <MainMenu
           save={save}
           now={now}
           onPick={pickDungeon}
