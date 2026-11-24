@@ -372,13 +372,13 @@ function Hud(p: Props & { sim: ReturnType<typeof simulate>; shown: ReturnType<ty
           <div className="stat-label">Situação</div>
           <div className="stat-value">
             {sim.alive ? (
-              p.totalSteps ? 'Sai vivo ✓' : '—'
+              p.totalSteps ? 'Survives ✓' : '—'
             ) : (
               <>
-                ☠ Déficit {sim.deficit} ♥ <span className="muted">(andar {sim.death!.floor + 1}, onda {sim.death!.step + 1})</span>
+                ☠ Deficit {sim.deficit} ♥ <span className="muted">(floor {sim.death!.floor + 1}, wave {sim.death!.step + 1})</span>
               </>
             )}
-            {p.preview && shown.alive !== sim.alive && <span className={`delta ${shown.alive ? 'good' : 'bad'}`}>→ {shown.alive ? 'vivo' : `déficit ${shown.deficit}`}</span>}
+            {p.preview && shown.alive !== sim.alive && <span className={`delta ${shown.alive ? 'good' : 'bad'}`}>→ {shown.alive ? 'survives' : `deficit ${shown.deficit}`}</span>}
             {p.preview && !shown.alive && !sim.alive && shown.deficit !== sim.deficit && <Delta a={sim.deficit} b={shown.deficit} invert />}
           </div>
         </div>
