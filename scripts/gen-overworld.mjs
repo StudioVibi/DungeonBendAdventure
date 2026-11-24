@@ -63,11 +63,13 @@ const svg = (w, h, body, defs = '') =>
     treeline += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(s)}" fill="${r() < 0.5 ? '#4f8a3c' : '#5c9846'}"/>`
   }
   // árvores grandes espalhadas (longe das construções)
-  const trees = [[90, 610], [1530, 640], [585, 575], [975, 790], [1500, 470], [110, 830], [1180, 760], [1420, 820], [600, 860]]
-  let treeSvg = ''
-  for (const [x, y] of trees) {
-    const s = 0.8 + r() * 0.5
-    treeSvg += `<g transform="translate(${x} ${y}) scale(${f(s)})">
+  // árvores: desenhadas na cena por profundidade (React), não no fundo
+  const trees = [[90, 610], [1530, 640], [585, 575], [975, 790], [1500, 470], [110, 830], [1180, 760], [1420, 820], [655, 878]]
+  LAYOUT.trees = trees.map(([x, y]) => ({ x, y, s: +(0.8 + r() * 0.5).toFixed(2) }))
+  writeFileSync(new URL('../src/game/overworld-layout.json', import.meta.url), JSON.stringify(LAYOUT, null, 2) + '\n')
+  const treeSvg = ''
+  {
+    const treeArt = `<g transform="translate(70 130)">
       <ellipse cx="6" cy="8" rx="46" ry="12" fill="#000" opacity=".18"/>
       <rect x="-8" y="-40" width="16" height="48" rx="4" fill="#7a4f2c" stroke="${INK}" stroke-width="4"/>
       <circle cx="0" cy="-70" r="44" fill="#3f7d34" stroke="${INK}" stroke-width="4"/>
@@ -76,6 +78,7 @@ const svg = (w, h, body, defs = '') =>
       <circle cx="-4" cy="-72" r="40" fill="#4f9440"/>
       <circle cx="-14" cy="-86" r="16" fill="#6fb35a" opacity=".8"/>
     </g>`
+    writeFileSync(new URL('tree.svg', OUT), svg(140, 150, treeArt))
   }
   let tufts = ''
   for (let i = 0; i < 220; i++) {
@@ -105,7 +108,6 @@ const svg = (w, h, body, defs = '') =>
       <path d="M0 272Q400 255 800 268T1600 266V${H}H0Z" fill="url(#plain)"/>
       <rect y="270" width="${W}" height="${H - 270}" filter="url(#gn)"/>
       ${treeline}${tufts}${flowers}${roadSvg}${rocks}
-      <ellipse cx="${c.x}" cy="${c.y + 6}" rx="70" ry="26" fill="#d8b679" stroke="#8a6a3e" stroke-width="6"/>
       ${treeSvg}`, defs),
   )
 }
