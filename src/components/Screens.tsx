@@ -139,17 +139,16 @@ export function ShopScreen(p: {
       </main>
 
       <footer className="shop-toolbar">
-        {/* leque de cartas: entra na coleção */}
-        <button className="tb-cards" onClick={p.onCollection} title="Ver a coleção de cartas">
-          <span className="card-fan">
-            {(['bat', 'rat', 'slime_green'] as MonsterId[]).map((m, i) => (
-              <span key={m} className={`fan-card c${i}`}>
-                <img src={MONSTERS[m].sprite} alt="" draggable={false} />
-              </span>
-            ))}
-          </span>
-          <span className="tb-title">Coleção</span>
-        </button>
+        <div className="tb-bag">
+          <div className="tb-group">
+            <div className="bag-label">Poções na mochila</div>
+            <div className="slots">{save.loadout.potions.map((id, i) => slot(id, 'potions', i))}</div>
+          </div>
+          <div className="tb-group">
+            <div className="bag-label">Armas na mochila</div>
+            <div className="slots">{save.loadout.weapons.map((id, i) => slot(id, 'weapons', i))}</div>
+          </div>
+        </div>
 
         {/* armazém: itens que o jogador possui (clique leva para a mochila) */}
         <div className="tb-storage">
@@ -172,16 +171,17 @@ export function ShopScreen(p: {
           </div>
         </div>
 
-        <div className="tb-bag">
-          <div className="tb-group">
-            <div className="bag-label">Poções na mochila</div>
-            <div className="slots">{save.loadout.potions.map((id, i) => slot(id, 'potions', i))}</div>
-          </div>
-          <div className="tb-group">
-            <div className="bag-label">Armas na mochila</div>
-            <div className="slots">{save.loadout.weapons.map((id, i) => slot(id, 'weapons', i))}</div>
-          </div>
-        </div>
+        {/* leque de cartas: entra na coleção */}
+        <button className="tb-cards" onClick={p.onCollection} title="Ver a coleção de cartas">
+          <span className="card-fan">
+            {(['bat', 'rat', 'slime_green'] as MonsterId[]).map((m, i) => (
+              <span key={m} className={`fan-card c${i}`}>
+                <img src={MONSTERS[m].sprite} alt="" draggable={false} />
+              </span>
+            ))}
+          </span>
+          <span className="tb-title">Coleção</span>
+        </button>
       </footer>
     </div>
   )

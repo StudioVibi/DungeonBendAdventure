@@ -522,12 +522,12 @@ h3, h4 { margin: .4em 0; }
 .loading { cursor: pointer; }
 @keyframes start-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(1.05); } }
 
-/* barra da loja: coleção | armazém (centro) | mochila */
+/* barra da loja: mochila | armazém (centro) | coleção */
 .shop-toolbar .tb-group { align-items: center; }
 .shop-toolbar .bag-label { text-align: center; }
-.tb-bag { display: flex; gap: 22px; justify-self: end; }
+.tb-bag { display: flex; gap: 22px; justify-self: start; }
 .tb-cards {
-  justify-self: start; display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 4px 8px; cursor: pointer;
+  justify-self: end; display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 4px 8px; cursor: pointer;
   font: inherit; color: var(--text); border-radius: 12px;
 }
 .tb-cards:hover { background: rgba(255, 255, 255, .05); }
