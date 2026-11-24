@@ -32,7 +32,15 @@ export interface FloorPlan {
   steps: Step[]
   /** Escada no fim da trilha deste andar (sobe para o próximo). */
   stairs: { x: number; y: number } | null
+  /** itens na trilha até a escada (agem antes de subir; arma vale para a 1ª onda do próximo andar) */
+  stairsItems?: ToolId[]
 }
+
+/**
+ * Trechos de um andar são indexados 0..steps.length: o trecho i leva ao passo i;
+ * o trecho steps.length é a trilha da escada.
+ */
+export const edgeItemsOf = (f: FloorPlan, i: number): ToolId[] => (i < f.steps.length ? f.steps[i].items : f.stairsItems ?? [])
 
 export interface Plan {
   dungeon: DungeonId
@@ -141,6 +149,13 @@ export function stairsTrail(plan: Plan, floorIdx: number): TrailClass | null {
   return trailClass(dist(edgeFrom(plan, floorIdx, f.steps.length), f.stairs)) ?? TRAIL_CLASSES[TRAIL_CLASSES.length - 1]
 }
 
+/** Categoria de qualquer trecho (passo ou escada). */
+export function edgeTrail(plan: Plan, floorIdx: number, edgeIdx: number): TrailClass {
+  return edgeIdx < plan.floors[floorIdx].steps.length
+    ? stepTrail(plan, floorIdx, edgeIdx)
+    : stairsTrail(plan, floorIdx) ?? TRAIL_CLASSES[TRAIL_CLASSES.length - 1]
+}
+
 /** Dá para ligar `from` a `to` com uma trilha (dentro da distância 5)? */
 export const reachable = (from: P, to: P) => trailClass(dist(from, to)) !== null
 
@@ -162,17 +177,18 @@ export function edgeRule(cls: TrailClass): string {
 /** Remove itens que não cabem mais nas trilhas (ex.: trilha encurtou ao trocar a onda). */
 export function fitEdges(plan: Plan): { plan: Plan; removed: number } {
   let removed = 0
+  const fit = (list: ToolId[], cls: TrailClass) => {
+    const items: ToolId[] = []
+    for (const t of list) {
+      if (edgeAccepts(items, t, cls)) items.push(t)
+      else removed++
+    }
+    return items
+  }
   const floors = plan.floors.map((f, fi) => ({
     stairs: f.stairs,
-    steps: f.steps.map((s, si) => {
-      const cls = stepTrail(plan, fi, si)
-      const items: ToolId[] = []
-      for (const t of s.items) {
-        if (edgeAccepts(items, t, cls)) items.push(t)
-        else removed++
-      }
-      return { ...s, items }
-    }),
+    stairsItems: f.stairs ? fit(f.stairsItems ?? [], edgeTrail(plan, fi, f.steps.length)) : [],
+    steps: f.steps.map((s, si) => ({ ...s, items: fit(s.items, stepTrail(plan, fi, si)) })),
   }))
   return { plan: removed ? { ...plan, floors } : plan, removed }
 }
@@ -190,6 +206,7 @@ export interface ToolAvailability {
 function countTool(floor: FloorPlan, tool: ToolId) {
   let n = 0
   for (const s of floor.steps) for (const t of s.items) if (t === tool) n++
+  for (const t of floor.stairsItems ?? []) if (t === tool) n++
   return n
 }
 
@@ -221,13 +238,19 @@ export function sanitizePlan(plan: Plan, save: Save): { plan: Plan; removed: num
         else removed++
       }
     }
+    nf.stairsItems = []
+    for (const t of f.stairsItems ?? []) {
+      if (availability(save, out, fi, t).left > 0) nf.stairsItems.push(t)
+      else removed++
+    }
   }
   return { plan: out, removed }
 }
 
 // ---------- edição imutável ----------
 
-const cloneFloors = (p: Plan) => p.floors.map((f) => ({ stairs: f.stairs, steps: f.steps.map((s) => ({ ...s, items: [...s.items] })) }))
+const cloneFloors = (p: Plan): FloorPlan[] =>
+  p.floors.map((f) => ({ stairs: f.stairs, stairsItems: [...(f.stairsItems ?? [])], steps: f.steps.map((s) => ({ ...s, items: [...s.items] })) }))
 
 export function appendWave(plan: Plan, floorIdx: number, waveId: string): Plan {
   const floors = cloneFloors(plan)
@@ -249,15 +272,16 @@ export function replaceWave(plan: Plan, floorIdx: number, stepIdx: number, waveI
   return { ...plan, floors }
 }
 
-export function addItem(plan: Plan, floorIdx: number, stepIdx: number, tool: ToolId): Plan {
+/** `edgeIdx` = índice do trecho (steps.length = trilha da escada). */
+export function addItem(plan: Plan, floorIdx: number, edgeIdx: number, tool: ToolId): Plan {
   const floors = cloneFloors(plan)
-  floors[floorIdx].steps[stepIdx].items.push(tool)
+  edgeItemsOf(floors[floorIdx], edgeIdx).push(tool)
   return { ...plan, floors }
 }
 
-export function removeItem(plan: Plan, floorIdx: number, stepIdx: number, itemIdx: number): Plan {
+export function removeItem(plan: Plan, floorIdx: number, edgeIdx: number, itemIdx: number): Plan {
   const floors = cloneFloors(plan)
-  floors[floorIdx].steps[stepIdx].items.splice(itemIdx, 1)
+  edgeItemsOf(floors[floorIdx], edgeIdx).splice(itemIdx, 1)
   return { ...plan, floors }
 }
 
@@ -271,6 +295,7 @@ export function setStairs(plan: Plan, floorIdx: number, pos: { x: number; y: num
 export function removeStairs(plan: Plan, floorIdx: number): Plan {
   const floors = cloneFloors(plan).slice(0, floorIdx + 1)
   floors[floorIdx].stairs = null
+  floors[floorIdx].stairsItems = []
   return { ...plan, floors }
 }
 
@@ -303,6 +328,8 @@ export interface FloorResult {
   hpStart: number
   hpEnd: number
   steps: StepResult[]
+  /** trilha da escada (itens usados antes de subir) */
+  stairs: { trail: TrailClass; items: ItemResult[]; afterDeath: boolean } | null
   time: number
 }
 
@@ -337,23 +364,23 @@ export function simulate(plan: Plan): SimResult {
   const kills: Record<string, number> = {}
   const potionsUsed: Partial<Record<PotionId, number>> = {}
 
+  /** dano de arma da trilha da escada, que vale para a 1ª onda do próximo andar */
+  let carriedDmg = 0
+
   const floors: FloorResult[] = plan.floors.map((f, fi) => {
     const hpStart = hp
     let floorTime = 0
     const floorPotions: Partial<Record<PotionId, number>> = {}
-    const steps = f.steps.map((s, si) => {
-      const wave = waveById(plan, fi, s.waveId)
-      const afterDeath = death !== null
-      const hpBefore = hp
+    /** aplica os itens de um trecho; devolve resultados, dano de arma e tempo de descanso */
+    const applyItems = (list: ToolId[], afterDeath: boolean) => {
       let weaponDmg = 0
-      const trail = stepTrail(plan, fi, si)
-      let stepTime = trail.seconds
-      const items: ItemResult[] = s.items.map((tool) => {
+      let restTime = 0
+      const results: ItemResult[] = list.map((tool) => {
         let healed = 0
         if (tool === 'campfire') {
           healed = Math.max(0, max - hp)
           hp = max
-          stepTime += healed * SECONDS_PER_REST_HP
+          restTime += healed * SECONDS_PER_REST_HP
         } else if (isPotion(tool)) {
           healed = Math.max(0, Math.min(max, hp + ITEMS[tool].value) - hp)
           hp += healed
@@ -363,6 +390,18 @@ export function simulate(plan: Plan): SimResult {
         }
         return { tool, hp, healed }
       })
+      return { results, weaponDmg, restTime }
+    }
+    const steps = f.steps.map((s, si) => {
+      const wave = waveById(plan, fi, s.waveId)
+      const afterDeath = death !== null
+      const hpBefore = hp
+      const trail = stepTrail(plan, fi, si)
+      const applied = applyItems(s.items, afterDeath)
+      const items = applied.results
+      const weaponDmg = applied.weaponDmg + carriedDmg
+      carriedDmg = 0
+      let stepTime = trail.seconds + applied.restTime
       const total = waveHp(wave)
       const damage = Math.max(0, total - weaponDmg)
       hp -= damage
@@ -383,16 +422,23 @@ export function simulate(plan: Plan): SimResult {
       floorTime += stepTime
       return { wave, waveHp: total, weaponDmg, damage, hpBefore, items, hpAfter: hp, dead, afterDeath, trail, time: stepTime }
     })
-    // trilha até a escada também leva tempo
+    // trilha até a escada também leva tempo, e pode ter itens
     const st = stairsTrail(plan, fi)
+    let stairs: FloorResult['stairs'] = null
     if (st) {
-      floorTime += st.seconds
-      if (death === null) runTime += st.seconds
+      const afterDeath = death !== null
+      const applied = applyItems(f.stairsItems ?? [], afterDeath)
+      minHp = Math.min(minHp, hp)
+      carriedDmg += applied.weaponDmg
+      const t = st.seconds + applied.restTime
+      floorTime += t
+      if (!afterDeath) runTime += t
+      stairs = { trail: st, items: applied.results, afterDeath }
     }
     totalTime += floorTime
     // poção consumida = slot usado em algum andar (renova por andar, mas é gasta ao fim da run)
     for (const [id, n] of Object.entries(floorPotions) as [PotionId, number][]) potionsUsed[id] = Math.max(potionsUsed[id] ?? 0, n)
-    return { hpStart, hpEnd: hp, steps, time: floorTime }
+    return { hpStart, hpEnd: hp, steps, stairs, time: floorTime }
   })
 
   const alive = death === null

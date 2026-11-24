@@ -19,11 +19,12 @@ import {
   removeStairs,
   replaceWave,
   edgeAccepts,
+  edgeItemsOf,
+  edgeTrail,
   edgeFrom,
   edgeRule,
   fitEdges,
   reachable,
-  stepTrail,
   setStairs,
   simulate,
   truncateAfter,
@@ -107,9 +108,18 @@ export function DungeonScreen(props: Props) {
         best = i
       }
     })
+    // trilha da escada também recebe itens (trecho de índice steps.length)
+    if (g.stairsEdge && floor.stairs) {
+      const dStairs = Math.max(0, Math.hypot(p.x - floor.stairs.x, p.y - floor.stairs.y) - 44)
+      const d = Math.min(distToPolyline(p, g.stairsEdge.samples), dStairs)
+      if (d < bestD) {
+        bestD = d
+        best = floor.steps.length
+      }
+    }
     if (best < 0) return null
-    const cls = stepTrail(plan, floorIdx, best)
-    const ok = edgeAccepts(floor.steps[best].items, drag.tool, cls)
+    const cls = edgeTrail(plan, floorIdx, best)
+    const ok = edgeAccepts(edgeItemsOf(floor, best), drag.tool, cls)
     return { kind: 'edge' as const, stepIdx: best, ok, reason: edgeRule(cls) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drag, plan, floorIdx, floor.steps, toSvg])
@@ -153,7 +163,7 @@ export function DungeonScreen(props: Props) {
     }
     if (dropTarget?.kind === 'edge' && dropTarget.ok && drag && drag.tool !== 'stairs') {
       const p2 = addItem(plan, floorIdx, dropTarget.stepIdx, drag.tool)
-      return { plan: p2, ghost: { kind: 'item', stepIdx: dropTarget.stepIdx, itemIdx: p2.floors[floorIdx].steps[dropTarget.stepIdx].items.length - 1 } }
+      return { plan: p2, ghost: { kind: 'item', stepIdx: dropTarget.stepIdx, itemIdx: edgeItemsOf(p2.floors[floorIdx], dropTarget.stepIdx).length - 1 } }
     }
     if (dropTarget?.kind === 'stairs' && dropTarget.ok) return { plan: setStairs(plan, floorIdx, dropTarget.pos), ghost: { kind: 'stairs' } }
     if (hoverAppendable) return { plan: appendWave(plan, floorIdx, hoverAppendable), ghost: { kind: 'wave', stepIdx: floor.steps.length } }
@@ -176,8 +186,8 @@ export function DungeonScreen(props: Props) {
       if (t && !t.ok) flashHint(t.reason)
       else if (t?.kind === 'edge' && dragTool !== 'stairs') commit(addItem(cur, floorIdx, t.stepIdx, dragTool))
       else if (t?.kind === 'stairs') {
+        // não troca de andar sozinho: o jogador sobe clicando na escada ou na aba
         commit(setStairs(cur, floorIdx, t.pos))
-        setFloorIdx(floorIdx + 1)
       }
       setDrag(null)
     }
@@ -354,7 +364,7 @@ export function DungeonScreen(props: Props) {
           onHoverWave={setHoverWaveId}
           onWaveClick={onWaveClick}
           onItemClick={(si, ii) => commit(removeItem(plan, floorIdx, si, ii))}
-          onStairsClick={() => commit(removeStairs(plan, floorIdx))}
+          onStairsClick={() => floorIdx + 1 < plan.floors.length && setFloorIdx(floorIdx + 1)}
           onTailPointerDown={onTailPointerDown}
           onSvgPointerMove={onSvgPointerMove}
           onSvgPointerUp={onSvgPointerUp}

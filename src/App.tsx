@@ -4,6 +4,7 @@ import { CollectionScreen, ReportModal, SelectScreen, ShopScreen } from './compo
 import { dungeonById, type DungeonId, type PotionId } from './game/data'
 import {
   mergeCards,
+  fitEdges,
   hospitalFor,
   hospitalizedUntil,
   nextStartAt,
@@ -67,6 +68,8 @@ export default function App() {
         history.current.push(planRef.current)
         if (history.current.length > 200) history.current.shift()
       }
+      // toda edição respeita os encaixes por distância (ex.: escada movida, trilha cortada)
+      next = fitEdges(next).plan
       planRef.current = next
       setPlan(next.dungeon, next)
       force((n) => n + 1)

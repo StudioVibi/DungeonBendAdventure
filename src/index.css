@@ -140,7 +140,7 @@ h3, h4 { margin: .4em 0; }
 
 .stairs-node { cursor: pointer; }
 .stairs-disc { fill: rgba(30, 22, 16, .8); stroke: var(--gold); stroke-width: 3; }
-.stairs-node:hover .stairs-disc { stroke: var(--bad); }
+.stairs-node:hover .stairs-disc { stroke: #fff3c4; fill: rgba(255, 210, 90, .25); }
 .stairs-text { fill: var(--gold); font-weight: 900; font-size: 15px; paint-order: stroke; stroke: #1a0f05; stroke-width: 4px; }
 .start-node { cursor: grab; }
 .tail-handle { cursor: grab; }

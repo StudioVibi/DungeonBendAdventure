@@ -4,7 +4,7 @@ import { TrailFx } from './TrailFx'
 import { CAMPFIRE_ICON, HERO, ITEM_ART_OFFSET, ITEM_ART_RATIO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
 import { clusterLayout, edgeGeom, ICON_R, type EdgeGeom, type Pt } from '../game/geometry'
 import { floorMap, MAP_H, MAP_W, START, type Wave } from '../game/mapgen'
-import { stairsTrail, waveById, waveHp, type Plan, type SimResult } from '../game/plan'
+import { waveById, waveHp, type Plan, type SimResult } from '../game/plan'
 import { HeartBadge, MonsterHead, useFrame } from './ui'
 
 /** Sprite animado separado para não re-renderizar o mapa inteiro a cada frame. */
@@ -210,7 +210,13 @@ export function MapView(p: Props) {
         ),
       )}
       {g.stairsEdge && p.hiddenEdge !== 'stairs' && (
-        <Trail key={'s' + stairsKey} d={g.stairsEdge.d} ghost={ghost?.kind === 'stairs'} draw={stairsKey ? drawing[stairsKey] : undefined} />
+        <Trail
+          key={'s' + stairsKey}
+          d={g.stairsEdge.d}
+          ghost={ghost?.kind === 'stairs'}
+          highlight={p.dropStep === floor.steps.length ? (p.dropBlocked ? 'bad' : 'good') : undefined}
+          draw={stairsKey ? drawing[stairsKey] : undefined}
+        />
       )}
       {g.edges.map((e, i) => (p.hiddenEdge === i ? null : <Arrow key={'a' + edgeKey(i)} e={e} ghost={i === ghostWaveStep} draw={drawing[edgeKey(i)]} />))}
       {p.tooFarWaveId && (() => {
@@ -291,17 +297,36 @@ export function MapView(p: Props) {
         )
       })}
 
-      {/* encaixes e itens nas trilhas (quantidade depende da distância) */}
-      {floor.steps.map((s, si) => {
-        const e = g.edges[si]
-        const r = fr.steps[si]
-        if (!r || p.hiddenEdge === si) return null
-        const { kinds, slotOf } = socketLayout(s.items, r.trail)
+      {/* encaixes e itens nas trilhas (quantidade depende da distância); o último trecho pode ser a escada */}
+      {[
+        ...floor.steps.map((s, si) => ({
+          idx: si,
+          e: g.edges[si],
+          items: s.items,
+          r: fr.steps[si] ? { trail: fr.steps[si].trail, items: fr.steps[si].items, afterDeath: fr.steps[si].afterDeath } : null,
+          hidden: p.hiddenEdge === si,
+          ghostEdge: si === ghostWaveStep,
+        })),
+        ...(g.stairsEdge && fr.stairs
+          ? [
+              {
+                idx: floor.steps.length,
+                e: g.stairsEdge,
+                items: floor.stairsItems ?? [],
+                r: fr.stairs,
+                hidden: p.hiddenEdge === 'stairs',
+                ghostEdge: ghost?.kind === 'stairs',
+              },
+            ]
+          : []),
+      ].map(({ idx: si, e, items, r, hidden, ghostEdge }) => {
+        if (!r || hidden) return null
+        const { kinds, slotOf } = socketLayout(items, r.trail)
         const filled = new Set(slotOf)
         const isDrop = p.dropStep === si
         return (
           <g key={'sk' + si}>
-            <DistanceBadge e={e} cls={r.trail} ghost={si === ghostWaveStep} />
+            <DistanceBadge e={e} cls={r.trail} ghost={ghostEdge} />
             {kinds.map((kind, k) =>
               filled.has(k) ? null : (
                 <g
@@ -324,7 +349,7 @@ export function MapView(p: Props) {
                 </g>
               ),
             )}
-            {s.items.map((tool, ii) => {
+            {items.map((tool, ii) => {
               const pt = e.at(socketT(e, slotOf[ii], kinds.length))
               const res = r.items[ii]
               const isGhost = ghost?.kind === 'item' && ghost.stepIdx === si && ghost.itemIdx === ii
@@ -364,10 +389,6 @@ export function MapView(p: Props) {
           </g>
         )
       })}
-      {g.stairsEdge && p.hiddenEdge !== 'stairs' && (() => {
-        const cls = stairsTrail(plan, floorIdx)
-        return cls ? <DistanceBadge e={g.stairsEdge} cls={cls} ghost={ghost?.kind === 'stairs'} /> : null
-      })()}
 
       {/* início do andar */}
       <g className="start-node" onPointerDown={floor.steps.length === 0 ? p.onTailPointerDown : undefined}>
@@ -384,7 +405,7 @@ export function MapView(p: Props) {
           transform={`translate(${floor.stairs.x} ${floor.stairs.y})`}
           onClick={p.onStairsClick}
         >
-          <title>Escada: sobe para o andar {floorIdx + 2}. Clique para remover.</title>
+          <title>Escada: clique para subir ao andar {floorIdx + 2}. (Para apagar, clique na trilha da escada.)</title>
           <circle r={STAIRS_R} className="stairs-disc" />
           <image href={STAIRS_ICON} x={-38} y={-40} width={76} height={76} />
           <text y={STAIRS_R + 18} textAnchor="middle" className="stairs-text">Andar {floorIdx + 2}</text>
