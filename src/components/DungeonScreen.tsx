@@ -529,7 +529,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
         </div>
       </div>
       <div className="bag-help">
-        Trilhas D1–D5: quanto mais longe, mais tempo e mais encaixes (D1 nenhum · D2 1 recurso ou descanso · D3 1+1 · D4 2+1 · D5 3+1) · arraste itens para os encaixes
+        Trilhas mais longas levam mais tempo e têm mais encaixes · arraste itens para os encaixes
       </div>
       <div className="bag-actions">
         <button className="btn ghost" disabled={!p.canUndo} onClick={p.undo} title="Ctrl/Cmd+Z">↶ Desfazer</button>
