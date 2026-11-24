@@ -12,19 +12,38 @@ import {
   type PotionId,
   type WeaponId,
 } from '../game/data'
-import { formatTime, parseCardKey, type Save, type SimResult } from '../game/plan'
+import { formatTime, parseCardKey, runStatus, type Run, type Save, type SimResult } from '../game/plan'
 import { Gold, HeartIcon, HeroImg, MonsterHeadBadge } from './ui'
 
 // ---------------- Seleção de dungeon ----------------
 
-export function SelectScreen(p: { save: Save; onPick: (d: DungeonId) => void; onShop: () => void; onCollection: () => void }) {
-  const active = p.save.plan?.dungeon
+function clock(ms: number) {
+  const t = Math.max(0, Math.ceil(ms / 1000))
+  const h = Math.floor(t / 3600)
+  const m = Math.floor((t % 3600) / 60)
+  const sec = String(t % 60).padStart(2, '0')
+  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
+}
+
+export function SelectScreen(p: {
+  save: Save
+  now: number
+  onPick: (d: DungeonId) => void
+  onShop: () => void
+  onCollection: () => void
+  onOpenReport: (runId: string) => void
+  onCancelQueued: (runId: string) => void
+  onSkip: () => void
+}) {
+  const { save, now } = p
+  const runs = save.runs
+  const queuePos = (r: Run) => runs.filter((x) => runStatus(x, now) !== 'done').indexOf(r)
   return (
     <div className="screen select-screen">
       <header className="screen-head">
         <h1 className="logo">DungeonBend <span>Adventure</span></h1>
         <div className="head-actions">
-          <Gold value={p.save.gold} size={22} />
+          <Gold value={save.gold} size={22} />
           <button className="btn" onClick={p.onCollection}>Coleção</button>
           <button className="btn" onClick={p.onShop}>Loja</button>
         </div>
@@ -36,24 +55,86 @@ export function SelectScreen(p: { save: Save; onPick: (d: DungeonId) => void; on
           <div className="hero-hp"><HeartIcon /> {HERO.maxHp} de vida</div>
         </div>
         <div className="dungeon-cards">
-          {DUNGEONS.map((d) => (
-            <button
-              key={d.id}
-              className="dungeon-card"
-              style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.8)), url(${d.bg})`, borderColor: d.accent }}
-              onClick={() => p.onPick(d.id)}
-            >
-              {active === d.id && <span className="ribbon">Trilha em andamento</span>}
-              <div className="dc-name" style={{ color: d.accent }}>{d.name}</div>
-              <div className="dc-heads">
-                {d.pool.map((m) => <MonsterHeadBadge key={m} monster={m} size={52} />)}
-              </div>
-              <div className="dc-blurb">{d.blurb}</div>
-              <div className="dc-cta">{active === d.id ? 'Continuar' : 'Entrar'}</div>
-            </button>
-          ))}
+          {DUNGEONS.map((d) => {
+            const run = runs.find((r) => r.dungeon === d.id)
+            const st = run ? runStatus(run, now) : null
+            const draft = !run && save.plans[d.id]?.floors.some((f) => f.steps.length)
+            return (
+              <button
+                key={d.id}
+                className={`dungeon-card ${st ? 'st-' + st : ''}`}
+                style={{ backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.8)), url(${d.bg})`, borderColor: d.accent }}
+                onClick={() => p.onPick(d.id)}
+                disabled={st === 'running' || st === 'queued'}
+              >
+                {draft && <span className="ribbon">Trilha salva</span>}
+                <div className="dc-name" style={{ color: d.accent }}>{d.name}</div>
+                <div className="dc-heads">
+                  {d.pool.map((m) => <MonsterHeadBadge key={m} monster={m} size={52} />)}
+                </div>
+                <div className="dc-blurb">{d.blurb}</div>
+                {!run && <div className="dc-cta">{draft ? 'Continuar trilha' : 'Entrar'}</div>}
+                {run && st === 'running' && (
+                  <div className="dc-timer">
+                    <div className="dc-timer-label">⚔ Trilha em andamento</div>
+                    <div className="dc-timer-clock">⏳ {clock(run.endAt - now)}</div>
+                    <div className="dc-progress"><div style={{ width: `${((now - run.startAt) / (run.endAt - run.startAt)) * 100}%` }} /></div>
+                  </div>
+                )}
+                {run && st === 'queued' && (
+                  <div className="dc-timer queued">
+                    <div className="dc-timer-label">Na fila #{queuePos(run) + 1}</div>
+                    <div className="dc-timer-clock">começa em {clock(run.startAt - now)}</div>
+                    <div className="dc-timer-sub">duração {clock(run.endAt - run.startAt)}</div>
+                  </div>
+                )}
+                {run && st === 'done' && (
+                  <div className={`dc-timer done ${run.result.alive ? '' : 'lost'}`}>
+                    <div className="dc-timer-label">{run.result.alive ? '✓ Run concluída' : '☠ Alberto caiu'}</div>
+                    <div className="dc-cta">Ver relatório</div>
+                  </div>
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
+
+      {runs.length > 0 && (
+        <section className="queue">
+          <h3>Fila de runs</h3>
+          <p className="muted small">As runs acontecem uma de cada vez; a próxima começa quando a anterior termina. A dungeon fica trancada até a run dela acabar.</p>
+          <ol className="queue-list">
+            {runs.map((r) => {
+              const st = runStatus(r, now)
+              const d = DUNGEONS.find((x) => x.id === r.dungeon)!
+              return (
+                <li key={r.id} className={`queue-item st-${st}`}>
+                  <span className="qi-name" style={{ color: d.accent }}>{d.name}</span>
+                  <span className="qi-info">
+                    {r.result.wavesCleared} ondas · {r.result.alive ? <Gold value={r.result.gold} size={16} /> : <span className="bad">☠ morre</span>}
+                  </span>
+                  {st === 'running' && (
+                    <>
+                      <span className="qi-state">⏳ {clock(r.endAt - now)}</span>
+                      <button className="btn ghost small-btn" onClick={p.onSkip} title="Atalho de playtest">⏩ terminar agora</button>
+                    </>
+                  )}
+                  {st === 'queued' && (
+                    <>
+                      <span className="qi-state muted">começa em {clock(r.startAt - now)}</span>
+                      <button className="btn ghost small-btn" onClick={() => p.onCancelQueued(r.id)}>Tirar da fila</button>
+                    </>
+                  )}
+                  {st === 'done' && (
+                    <button className="btn primary small-btn" onClick={() => p.onOpenReport(r.id)}>Coletar</button>
+                  )}
+                </li>
+              )
+            })}
+          </ol>
+        </section>
+      )}
     </div>
   )
 }
@@ -212,20 +293,30 @@ export function CollectionScreen(p: { save: Save; onBack: () => void; backLabel:
 
 // ---------------- Relatório ----------------
 
-export function ReportModal(p: { sim: SimResult; dungeonName: string; onCollect: () => void; onCancel: () => void }) {
+export function ReportModal(p: {
+  mode: 'preview' | 'result'
+  sim: SimResult
+  dungeonName: string
+  /** ms até a run começar (prévia, quando há fila) */
+  startsIn: number
+  onConfirm: () => void
+  onCancel: () => void
+}) {
   const { sim } = p
+  const preview = p.mode === 'preview'
   const kills = Object.entries(sim.kills).map(([k, n]) => ({ ...parseCardKey(k), n }))
   const potions = Object.entries(sim.potionsUsed) as [PotionId, number][]
+  const title = preview ? (sim.alive ? 'Pronto para a run' : 'Essa trilha mata o Alberto') : sim.alive ? 'Saiu vivo!' : 'Alberto caiu…'
   return (
     <div className="modal-backdrop">
       <div className={`modal report ${sim.alive ? 'win' : 'lose'}`}>
-        <div className="report-title">{sim.alive ? 'Saiu vivo!' : 'Alberto caiu…'}</div>
+        <div className="report-title">{title}</div>
         <div className="report-sub">
           {p.dungeonName} · {sim.wavesCleared} {sim.wavesCleared === 1 ? 'onda derrotada' : 'ondas derrotadas'}
-          {!sim.alive && sim.death && ` · morreu no andar ${sim.death.floor + 1}`}
+          {!sim.alive && sim.death && ` · morre no andar ${sim.death.floor + 1}, onda ${sim.death.step + 1}`}
         </div>
         <div className="report-stats">
-          <div><span className="muted">Tempo na dungeon</span><b>⏳ {formatTime(sim.runTime)}</b></div>
+          <div><span className="muted">{preview ? 'Duração da run' : 'Tempo na dungeon'}</span><b>⏳ {formatTime(sim.runTime)}</b></div>
           <div>
             <span className="muted">Ouro</span>
             <b>{sim.alive ? <Gold value={`+${sim.gold}`} size={22} /> : <span className="muted strike"><Gold value={sim.goldLoot} size={22} /></span>}</b>
@@ -233,7 +324,7 @@ export function ReportModal(p: { sim: SimResult; dungeonName: string; onCollect:
           <div><span className="muted">Vida final</span><b><HeartIcon dead={sim.hpEnd <= 0} /> {Math.max(0, sim.hpEnd)}</b></div>
         </div>
         {!sim.alive && <p className="muted small center">Morrendo, o ouro é perdido — mas os monstros derrotados antes da queda viram cartas.</p>}
-        <h4>Cartas obtidas</h4>
+        <h4>{preview ? 'Cartas que vai obter' : 'Cartas obtidas'}</h4>
         {kills.length === 0 ? (
           <p className="muted small">Nenhuma.</p>
         ) : (
@@ -250,7 +341,7 @@ export function ReportModal(p: { sim: SimResult; dungeonName: string; onCollect:
         )}
         {potions.length > 0 && (
           <>
-            <h4>Itens consumidos</h4>
+            <h4>{preview ? 'Itens que serão consumidos' : 'Itens consumidos'}</h4>
             <div className="report-items">
               {potions.map(([id, n]) => (
                 <span key={id} className="ri"><img src={ITEMS[id].icon} alt="" /> {ITEMS[id].name} ×{n}</span>
@@ -258,9 +349,18 @@ export function ReportModal(p: { sim: SimResult; dungeonName: string; onCollect:
             </div>
           </>
         )}
+        {preview && (
+          <p className="muted small center">
+            {p.startsIn > 0
+              ? `Outra run está em andamento: esta entra na fila e começa em ${formatTime(p.startsIn / 1000)}.`
+              : 'A run começa agora. A dungeon fica trancada até ela terminar.'}
+          </p>
+        )}
         <div className="modal-actions">
-          <button className="btn ghost" onClick={p.onCancel}>Voltar ao mapa</button>
-          <button className="btn primary" onClick={p.onCollect}>Confirmar run</button>
+          <button className="btn ghost" onClick={p.onCancel}>{preview ? 'Voltar ao mapa' : 'Fechar'}</button>
+          <button className="btn primary" onClick={p.onConfirm}>
+            {preview ? (p.startsIn > 0 ? 'Colocar na fila' : 'Iniciar run') : 'Coletar'}
+          </button>
         </div>
       </div>
     </div>

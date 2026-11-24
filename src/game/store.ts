@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ITEMS, POTION_SLOTS, STARTING_GOLD, WEAPON_SLOTS, type ItemId } from './data'
-import type { Save } from './plan'
+import type { Plan, Save } from './plan'
 
 const KEY = 'dungeonbend-adventure:save:v1'
 
@@ -14,7 +14,8 @@ export function defaultSave(): Save {
     stock,
     loadout: { potions: ['potion_s', 'potion_s', 'potion_m'], weapons: ['cleaver', null] },
     cards: {},
-    plan: null,
+    plans: {},
+    runs: [],
   }
 }
 
@@ -35,8 +36,13 @@ function load(): Save {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return defaultSave()
-    const s = JSON.parse(raw) as Save
+    const s = JSON.parse(raw) as Save & { plan?: Plan | null }
     const d = defaultSave()
+    // migração: save antigo tinha um único `plan`
+    if (s.plan) s.plans = { ...(s.plans ?? {}), [s.plan.dungeon]: s.plan }
+    delete s.plan
+    s.plans ??= {}
+    s.runs ??= []
     return normalizeLoadout({
       ...d,
       ...s,

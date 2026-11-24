@@ -1,23 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { DungeonScreen } from './components/DungeonScreen'
 import { CollectionScreen, ReportModal, SelectScreen, ShopScreen } from './components/Screens'
-import { dungeonById, type DungeonId } from './game/data'
-import { newPlan, sanitizePlan, simulate, type Plan, type SimResult } from './game/plan'
+import { dungeonById, type DungeonId, type PotionId } from './game/data'
+import {
+  nextStartAt,
+  newPlan,
+  retime,
+  runDurationMs,
+  runStatus,
+  sanitizePlan,
+  simulate,
+  type Plan,
+  type Run,
+  type SimResult,
+} from './game/plan'
 import { normalizeLoadout, useSave } from './game/store'
 
 type Screen = 'select' | 'dungeon' | 'shop' | 'collection'
+type ReportState = { mode: 'preview'; sim: SimResult } | { mode: 'result'; runId: string }
+
+/** Relógio que atualiza 1x por segundo (para os timers). */
+function useNow() {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return now
+}
 
 export default function App() {
   const { save, update, reset } = useSave()
-  const [screen, setScreen] = useState<Screen>(save.plan ? 'dungeon' : 'select')
+  const now = useNow()
+  const [screen, setScreen] = useState<Screen>('select')
   const [prevScreen, setPrevScreen] = useState<Screen>('select')
+  const [active, setActive] = useState<DungeonId | null>(null)
   const [floorIdx, setFloorIdxRaw] = useState(0)
-  const [report, setReport] = useState<SimResult | null>(null)
+  const [report, setReport] = useState<ReportState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const history = useRef<Plan[]>([])
   const [, force] = useState(0)
 
-  const plan = save.plan
+  const plan = active ? save.plans[active] ?? null : null
   const planRef = useRef(plan)
   planRef.current = plan
   const maxFloor = plan ? plan.floors.length - 1 : 0
@@ -29,6 +53,11 @@ export default function App() {
     setTimeout(() => setToast(null), 3200)
   }
 
+  const setPlan = useCallback(
+    (d: DungeonId, p: Plan) => update((s) => ({ ...s, plans: { ...s.plans, [d]: p } })),
+    [update],
+  )
+
   const commit = useCallback(
     (next: Plan) => {
       if (planRef.current) {
@@ -36,63 +65,111 @@ export default function App() {
         if (history.current.length > 200) history.current.shift()
       }
       planRef.current = next
-      update((s) => ({ ...s, plan: next }))
+      setPlan(next.dungeon, next)
       force((n) => n + 1)
     },
-    [update],
+    [setPlan],
   )
 
   const undo = useCallback(() => {
     const prev = history.current.pop()
     if (!prev) return
     planRef.current = prev
-    update((s) => ({ ...s, plan: prev }))
+    setPlan(prev.dungeon, prev)
     force((n) => n + 1)
-  }, [update])
+  }, [setPlan])
 
   const go = (to: Screen) => {
     setPrevScreen(screen)
     setScreen(to)
   }
 
-  // ao voltar da loja, remove do plano itens que a mochila não comporta mais
-  const backToDungeon = () => {
-    if (save.plan) {
-      const { plan: clean, removed } = sanitizePlan(save.plan, save)
+  /** Abre a dungeon limpando do rascunho itens que a mochila/estoque não comporta mais. */
+  const openDungeon = (d: DungeonId) => {
+    const draft = save.plans[d]
+    if (draft) {
+      const { plan: clean, removed } = sanitizePlan(draft, save)
       if (removed) {
-        update((s) => ({ ...s, plan: clean }))
+        setPlan(d, clean)
         showToast(`${removed} ${removed === 1 ? 'item foi removido' : 'itens foram removidos'} da trilha (mochila/estoque mudou).`)
       }
+    } else {
+      setPlan(d, newPlan(d))
     }
+    if (active !== d) {
+      history.current = []
+      setFloorIdxRaw(0)
+    }
+    setActive(d)
     setScreen('dungeon')
   }
 
   const pickDungeon = (d: DungeonId) => {
-    if (save.plan && save.plan.dungeon !== d) {
-      if (!confirm(`Você tem uma trilha em andamento em ${dungeonById(save.plan.dungeon).name}. Descartar e entrar em ${dungeonById(d).name}?`)) return
+    const run = save.runs.find((r) => r.dungeon === d)
+    if (run) {
+      if (runStatus(run, now) === 'done') setReport({ mode: 'result', runId: run.id })
+      return // dungeon trancada até a run acabar
     }
-    if (!save.plan || save.plan.dungeon !== d) {
-      history.current = []
-      update((s) => ({ ...s, plan: newPlan(d) }))
-      setFloorIdxRaw(0)
-    }
-    setScreen('dungeon')
+    openDungeon(d)
   }
 
-  const collect = () => {
-    if (!report) return
-    const r = report
+  /** Inicia a run (ou coloca na fila). As poções da trilha saem do estoque agora. */
+  const startRun = () => {
+    if (!plan || !active) return
+    const result = simulate(plan)
+    const d = active
     update((s) => {
-      const cards = { ...s.cards }
-      for (const [k, n] of Object.entries(r.kills)) cards[k] = (cards[k] ?? 0) + n
+      const startAt = nextStartAt(s.runs, Date.now())
+      const run: Run = { id: `${d}-${Date.now()}`, dungeon: d, plan, result, startAt, endAt: startAt + runDurationMs({ result }) }
       const stock = { ...s.stock }
-      for (const [id, n] of Object.entries(r.potionsUsed)) stock[id as keyof typeof stock] = Math.max(0, stock[id as keyof typeof stock] - (n ?? 0))
-      return normalizeLoadout({ ...s, gold: s.gold + r.gold, cards, stock, plan: null })
+      for (const [id, n] of Object.entries(result.potionsUsed) as [PotionId, number][]) stock[id] = Math.max(0, stock[id] - n)
+      const plans = { ...s.plans }
+      delete plans[d]
+      return normalizeLoadout({ ...s, stock, plans, runs: [...s.runs, run] })
     })
     history.current = []
     setReport(null)
+    setActive(null)
     setFloorIdxRaw(0)
     setScreen('select')
+  }
+
+  /** Coleta o resultado de uma run terminada. */
+  const collect = (runId: string) => {
+    const run = save.runs.find((r) => r.id === runId)
+    if (!run) return
+    const r = run.result
+    update((s) => {
+      const cards = { ...s.cards }
+      for (const [k, n] of Object.entries(r.kills)) cards[k] = (cards[k] ?? 0) + n
+      return { ...s, gold: s.gold + r.gold, cards, runs: s.runs.filter((x) => x.id !== runId) }
+    })
+    setReport(null)
+  }
+
+  /** Tira da fila uma run que ainda não começou: devolve poções e a trilha volta a ser rascunho. */
+  const cancelQueued = (runId: string) => {
+    update((s) => {
+      const run = s.runs.find((r) => r.id === runId)
+      if (!run || runStatus(run, Date.now()) !== 'queued') return s
+      const stock = { ...s.stock }
+      for (const [id, n] of Object.entries(run.result.potionsUsed) as [PotionId, number][]) stock[id] += n
+      return {
+        ...s,
+        stock,
+        plans: { ...s.plans, [run.dungeon]: run.plan },
+        runs: retime(s.runs.filter((r) => r.id !== runId), Date.now()),
+      }
+    })
+  }
+
+  /** Playtest: termina a run em andamento agora e adianta a fila. */
+  const skipRunning = () => {
+    update((s) => {
+      const t = Date.now()
+      const runs = s.runs.map((r) => (runStatus(r, t) === 'running' ? { ...r, startAt: t - runDurationMs(r), endAt: t } : r))
+      return { ...s, runs: retime(runs, t) }
+    })
   }
 
   useEffect(() => {
@@ -100,11 +177,25 @@ export default function App() {
   }, [screen, plan])
 
   const backLabel = prevScreen === 'dungeon' && plan ? 'Voltar à dungeon' : 'Voltar'
-  const back = () => (prevScreen === 'dungeon' && plan ? backToDungeon() : setScreen('select'))
+  const back = () => (prevScreen === 'dungeon' && active && plan ? openDungeon(active) : setScreen('select'))
+
+  const resultRun = report?.mode === 'result' ? save.runs.find((r) => r.id === report.runId) : undefined
+  const queueStart = nextStartAt(save.runs, now)
 
   return (
     <>
-      {screen === 'select' && <SelectScreen save={save} onPick={pickDungeon} onShop={() => go('shop')} onCollection={() => go('collection')} />}
+      {screen === 'select' && (
+        <SelectScreen
+          save={save}
+          now={now}
+          onPick={pickDungeon}
+          onShop={() => go('shop')}
+          onCollection={() => go('collection')}
+          onOpenReport={(runId) => setReport({ mode: 'result', runId })}
+          onCancelQueued={cancelQueued}
+          onSkip={skipRunning}
+        />
+      )}
       {screen === 'dungeon' && plan && (
         <DungeonScreen
           save={save}
@@ -114,10 +205,11 @@ export default function App() {
           commit={commit}
           undo={undo}
           canUndo={history.current.length > 0}
+          queued={queueStart > now}
           onShop={() => go('shop')}
           onCollection={() => go('collection')}
           onLeave={() => go('select')}
-          onFinish={() => setReport(simulate(plan))}
+          onFinish={() => setReport({ mode: 'preview', sim: simulate(plan) })}
         />
       )}
       {screen === 'shop' && <ShopScreen save={save} update={update} onBack={back} backLabel={backLabel} />}
@@ -129,12 +221,30 @@ export default function App() {
           onReset={() => {
             reset()
             history.current = []
+            setActive(null)
             setScreen('select')
           }}
         />
       )}
-      {report && plan && (
-        <ReportModal sim={report} dungeonName={dungeonById(plan.dungeon).name} onCollect={collect} onCancel={() => setReport(null)} />
+      {report?.mode === 'preview' && plan && (
+        <ReportModal
+          mode="preview"
+          sim={report.sim}
+          dungeonName={dungeonById(plan.dungeon).name}
+          startsIn={queueStart - now}
+          onConfirm={startRun}
+          onCancel={() => setReport(null)}
+        />
+      )}
+      {resultRun && (
+        <ReportModal
+          mode="result"
+          sim={resultRun.result}
+          dungeonName={dungeonById(resultRun.dungeon).name}
+          startsIn={0}
+          onConfirm={() => collect(resultRun.id)}
+          onCancel={() => setReport(null)}
+        />
       )}
       {toast && <div className="toast">{toast}</div>}
     </>

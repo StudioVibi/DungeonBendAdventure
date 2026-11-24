@@ -36,6 +36,8 @@ interface Props {
   commit: (plan: Plan) => void
   undo: () => void
   canUndo: boolean
+  /** já existe run em andamento: esta entraria na fila */
+  queued: boolean
   onShop: () => void
   onCollection: () => void
   onLeave: () => void

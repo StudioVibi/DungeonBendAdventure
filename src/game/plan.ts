@@ -46,8 +46,45 @@ export interface Save {
   loadout: Loadout
   /** chave `${monsterId}:${level}` → quantidade de cartas */
   cards: Record<string, number>
-  plan: Plan | null
+  /** rascunho de trilha de cada dungeon (ainda não iniciada) */
+  plans: Partial<Record<DungeonId, Plan>>
+  /** runs iniciadas, em ordem de fila */
+  runs: Run[]
 }
+
+/** Uma run iniciada: roda em tempo real; a próxima da fila começa quando esta termina. */
+export interface Run {
+  id: string
+  dungeon: DungeonId
+  plan: Plan
+  result: SimResult
+  /** epoch ms */
+  startAt: number
+  endAt: number
+}
+
+export type RunStatus = 'running' | 'queued' | 'done'
+
+export const runStatus = (r: Run, now: number): RunStatus => (now >= r.endAt ? 'done' : now >= r.startAt ? 'running' : 'queued')
+export const runDurationMs = (r: { result: SimResult }) => Math.max(1000, Math.round(r.result.runTime * 1000))
+
+/** Recalcula horários: runs já iniciadas ficam como estão; as da fila começam quando a anterior termina. */
+export function retime(runs: Run[], now: number): Run[] {
+  let prevEnd = 0
+  return runs.map((r) => {
+    if (r.startAt <= now) {
+      prevEnd = Math.max(prevEnd, r.endAt)
+      return r
+    }
+    const startAt = Math.max(now, prevEnd)
+    const endAt = startAt + runDurationMs(r)
+    prevEnd = endAt
+    return { ...r, startAt, endAt }
+  })
+}
+
+/** Quando uma nova run começaria se entrasse na fila agora. */
+export const nextStartAt = (runs: Run[], now: number) => Math.max(now, ...runs.map((r) => r.endAt))
 
 export const newPlan = (dungeon: DungeonId): Plan => ({ dungeon, floors: [{ steps: [], stairs: null }] })
 
