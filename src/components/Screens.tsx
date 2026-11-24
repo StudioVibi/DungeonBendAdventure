@@ -114,7 +114,7 @@ export function ShopScreen(p: {
       <header className="shop-head">
         <button className="btn ghost" data-sfx="back" onClick={p.onBack}>← {p.backLabel}</button>
         <h2>Barraca do mercador</h2>
-        <span className="top-gold"><Gold value={save.gold} size={24} /></span>
+        <span />
       </header>
 
       <main className="shop-room">
@@ -172,6 +172,12 @@ export function ShopScreen(p: {
         </div>
 
         {/* leque de cartas: entra na coleção */}
+        {/* seu ouro: setor pequeno, um elemento só */}
+        <div className="tb-gold">
+          <div className="bag-label">Seu ouro</div>
+          <Gold value={save.gold} size={30} />
+        </div>
+
         <button className="tb-cards" onClick={p.onCollection} title="Ver a coleção de cartas">
           <span className="card-fan">
             {(['bat', 'rat', 'slime_green'] as MonsterId[]).map((m, i) => (

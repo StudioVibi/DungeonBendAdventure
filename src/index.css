@@ -423,7 +423,7 @@ h3, h4 { margin: .4em 0; }
 /* ================= loja: estantes ================= */
 .shop { height: 100%; display: grid; grid-template-rows: auto 1fr auto; background: #3a2418; }
 .shop-head {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; justify-items: start; gap: 12px; padding: 10px 20px;
   background: rgba(24, 14, 10, .85); border-bottom: 1px solid rgba(255, 255, 255, .06);
 }
 .shop-head h2 { margin: 0; font-size: 30px; color: #f3d9a6; }
@@ -491,7 +491,7 @@ h3, h4 { margin: .4em 0; }
 
 /* barra de slots (mochila) na parte de baixo */
 .shop-toolbar {
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 22px; padding: 12px 24px;
+  display: grid; grid-template-columns: auto 1fr auto auto; align-items: stretch; gap: 0; padding: 10px 12px;
   background: linear-gradient(0deg, #1d1720, #2a2030); border-top: 2px solid #3d3140;
 }
 .tb-group { display: flex; flex-direction: column; }
@@ -522,12 +522,18 @@ h3, h4 { margin: .4em 0; }
 .loading { cursor: pointer; }
 @keyframes start-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(1.05); } }
 
-/* barra da loja: mochila | armazém (centro) | coleção */
+/* barra da loja em 4 setores: mochila | armazém | ouro (pequeno) | coleção */
+.shop-toolbar > * { padding: 4px 22px; display: flex; flex-direction: column; justify-content: center; }
+.shop-toolbar > * + * { border-left: 1px solid rgba(255, 255, 255, .08); }
+.shop-toolbar > .tb-bag { flex-direction: row; align-items: flex-end; }
+.shop-toolbar > .tb-cards { flex-direction: row; border-radius: 0; }
+.tb-gold { align-items: center; gap: 6px; }
+.tb-gold .gold { font-size: 26px; }
 .shop-toolbar .tb-group { align-items: center; }
 .shop-toolbar .bag-label { text-align: center; }
-.tb-bag { display: flex; gap: 22px; justify-self: start; }
+.tb-bag { display: flex; gap: 22px; }
 .tb-cards {
-  justify-self: end; display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 4px 8px; cursor: pointer;
+  display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 4px 8px; cursor: pointer;
   font: inherit; color: var(--text); border-radius: 12px;
 }
 .tb-cards:hover { background: rgba(255, 255, 255, .05); }
