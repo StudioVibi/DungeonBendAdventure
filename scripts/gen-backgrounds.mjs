@@ -59,37 +59,96 @@ ${body}
 ${puddles}${pebbles}${rocks}`))
 }
 
-// ---------- Cripta ----------
+// ---------- Cripta (chão de castelo visto de cima) ----------
 {
   const r = rng(29)
-  let tiles = '', graves = '', cracks = '', candles = ''
-  const tw = 100, th = 70
-  for (let y = 0; y < H; y += th) {
-    const off = (y / th) % 2 ? tw / 2 : 0
-    for (let x = -off; x < W; x += tw) {
-      const c = 58 + Math.floor(r() * 18)
-      tiles += `<rect x="${x + 3}" y="${y + 3}" width="${tw - 6}" height="${th - 6}" rx="6" fill="rgb(${c},${c + 2},${c + 10})"/>`
+  const T = 120 // laje quadrada, grade alinhada (sem deslocamento de tijolo)
+  let slabs = '', cracks = '', wear = '', mosaic = '', pillars = '', sarcs = '', candles = '', bones = ''
+
+  for (let gy = -1; gy * T < H; gy++) {
+    for (let gx = 0; gx * T < W; gx++) {
+      const x = gx * T, y = gy * T + 30
+      const c = 74 + Math.floor(r() * 22)
+      const tint = `rgb(${c},${c - 2},${c - 6})`
+      const roll = r()
+      if (roll < 0.18) {
+        // laje dividida em duas metades
+        const vert = r() < 0.5
+        const a = vert ? [x, y, T / 2, T] : [x, y, T, T / 2]
+        const b = vert ? [x + T / 2, y, T / 2, T] : [x, y + T / 2, T, T / 2]
+        for (const [bx, by, bw, bh] of [a, b]) {
+          const c2 = 70 + Math.floor(r() * 24)
+          slabs += `<rect x="${bx + 3}" y="${by + 3}" width="${bw - 6}" height="${bh - 6}" rx="4" fill="rgb(${c2},${c2 - 2},${c2 - 6})"/>`
+        }
+      } else {
+        slabs += `<rect x="${x + 3}" y="${y + 3}" width="${T - 6}" height="${T - 6}" rx="5" fill="${tint}"/>`
+        // bisel: luz em cima/esquerda, sombra embaixo/direita
+        slabs += `<path d="M${x + 6} ${y + T - 6}V${y + 6}H${x + T - 6}" stroke="#fff" stroke-opacity=".07" stroke-width="3" fill="none"/>`
+        slabs += `<path d="M${x + 6} ${y + T - 5}H${x + T - 5}V${y + 6}" stroke="#000" stroke-opacity=".25" stroke-width="3" fill="none"/>`
+      }
+      if (r() < 0.22) wear += `<ellipse cx="${f(x + 20 + r() * (T - 40))}" cy="${f(y + 20 + r() * (T - 40))}" rx="${f(10 + r() * 22)}" ry="${f(6 + r() * 14)}" fill="#000" opacity=".12"/>`
     }
   }
-  for (let i = 0; i < 22; i++) {
+
+  for (let i = 0; i < 26; i++) {
     let x = r() * W, y = r() * H, d = `M${f(x)} ${f(y)}`
-    for (let k = 0; k < 4; k++) { x += (r() - 0.5) * 60; y += (r() - 0.5) * 60; d += `L${f(x)} ${f(y)}` }
-    cracks += `<path d="${d}" stroke="#1b1c22" stroke-width="2.5" fill="none" opacity=".7"/>`
+    for (let k = 0; k < 3; k++) { x += (r() - 0.5) * 50; y += (r() - 0.5) * 50; d += `L${f(x)} ${f(y)}` }
+    cracks += `<path d="${d}" stroke="#1d1c1f" stroke-width="2" fill="none" opacity=".75"/>`
   }
-  const spots = [[60, 120], [60, 420], [60, 720], [W - 70, 160], [W - 70, 470], [W - 70, 780], [420, 40], [800, 40], [1180, 40], [600, H - 30], [1000, H - 30]]
-  for (const [x, y] of spots) {
-    graves += `<g transform="translate(${x} ${y})"><ellipse cx="0" cy="38" rx="40" ry="10" fill="#000" opacity=".35"/>
-      <path d="M-28 38V-12a28 28 0 0 1 56 0V38z" fill="#7d8190" stroke="#262830" stroke-width="5"/>
-      <path d="M-4 -16h8v10h10v8H4v22h-8V2h-10v-8h10z" fill="#4c4f5c"/></g>`
+
+  // tapete vermelho atravessando a sala (visto de cima)
+  const rugY = 390, rugH = 150
+  const rug = `<g>
+    <rect x="-10" y="${rugY}" width="${W + 20}" height="${rugH}" fill="#5e1a1e"/>
+    <rect x="-10" y="${rugY + 12}" width="${W + 20}" height="${rugH - 24}" fill="none" stroke="#c99a3c" stroke-width="4"/>
+    <rect x="-10" y="${rugY + 22}" width="${W + 20}" height="${rugH - 44}" fill="none" stroke="#c99a3c" stroke-width="1.5" stroke-dasharray="10 8"/>
+    <rect x="-10" y="${rugY}" width="${W + 20}" height="${rugH}" filter="url(#n2)" opacity=".8"/>
+  </g>`
+
+  // mosaico em losango no centro
+  const cx = W / 2, cy = 300
+  mosaic = `<g transform="translate(${cx} ${cy})">
+    <path d="M0 -95L95 0L0 95L-95 0Z" fill="#3e3f48" stroke="#25252b" stroke-width="6"/>
+    <path d="M0 -62L62 0L0 62L-62 0Z" fill="#6b5a3a" stroke="#25252b" stroke-width="4"/>
+    <path d="M0 -30L30 0L0 30L-30 0Z" fill="#3e3f48" stroke="#25252b" stroke-width="3"/>
+  </g>`
+
+  // pilares (vistos de cima: círculo com sombra projetada)
+  for (const [x, y] of [[230, 160], [W - 230, 160], [230, H - 140], [W - 230, H - 140], [W / 2 - 330, 140], [W / 2 + 330, 140]]) {
+    pillars += `<g transform="translate(${x} ${y})">
+      <ellipse cx="16" cy="18" rx="56" ry="50" fill="#000" opacity=".35"/>
+      <rect x="-54" y="-54" width="108" height="108" rx="10" fill="#6d6c72" stroke="#2a292e" stroke-width="5"/>
+      <circle r="40" fill="#8a8990" stroke="#2a292e" stroke-width="5"/>
+      <circle r="28" fill="none" stroke="#5c5b62" stroke-width="3"/>
+      <path d="M-22 -22a32 32 0 0 1 30 -8" stroke="#fff" stroke-opacity=".25" stroke-width="5" fill="none" stroke-linecap="round"/>
+    </g>`
   }
-  for (let i = 0; i < 10; i++) {
-    const x = 200 + r() * 1200, y = 80 + r() * 740
-    candles += `<g transform="translate(${f(x)} ${f(y)})"><circle r="38" fill="#ffcf7a" opacity=".12"/><rect x="-5" y="-6" width="10" height="20" rx="2" fill="#e9e2cf" stroke="#3a3428" stroke-width="2"/><path d="M0 -18c4 5 4 9 0 12c-4-3-4-7 0-12z" fill="#ffb347"/></g>`
+
+  // sarcófagos encostados nas bordas (vistos de cima)
+  for (const [x, y, rot] of [[60, 330, 90], [60, 640, 90], [W - 60, 330, 90], [W - 60, 640, 90], [520, 50, 0], [1080, 50, 0], [800, H - 45, 0]]) {
+    sarcs += `<g transform="translate(${x} ${y}) rotate(${rot})">
+      <rect x="-82" y="-36" width="170" height="80" rx="12" fill="#000" opacity=".3"/>
+      <rect x="-90" y="-42" width="180" height="84" rx="12" fill="#77767d" stroke="#2a292e" stroke-width="5"/>
+      <rect x="-76" y="-30" width="152" height="60" rx="8" fill="#8c8b92" stroke="#55545b" stroke-width="3"/>
+      <path d="M-8 -20h16v12h24v14H8v20H-8V6h-24V-8h24z" fill="#5c5b62"/>
+    </g>`
   }
+
+  for (let i = 0; i < 9; i++) {
+    const x = 150 + r() * 1300, y = 90 + r() * 720
+    if (y > rugY - 20 && y < rugY + rugH + 20) continue
+    candles += `<g transform="translate(${f(x)} ${f(y)})"><circle r="46" fill="#ffcf7a" opacity=".13"/><circle r="22" fill="#ffcf7a" opacity=".12"/>
+      <circle r="9" fill="#e9e2cf" stroke="#3a3428" stroke-width="2"/><circle r="4" fill="#ffb347"/><circle r="2" fill="#fff6c8"/></g>`
+  }
+  for (let i = 0; i < 7; i++) {
+    const x = 120 + r() * 1360, y = 100 + r() * 700, a = r() * 180
+    bones += `<g transform="translate(${f(x)} ${f(y)}) rotate(${f(a)})" opacity=".85"><rect x="-14" y="-2.5" width="28" height="5" rx="2" fill="#e8e1cf"/><circle cx="-14" cy="-3" r="4" fill="#e8e1cf"/><circle cx="-14" cy="3" r="4" fill="#e8e1cf"/><circle cx="14" cy="-3" r="4" fill="#e8e1cf"/><circle cx="14" cy="3" r="4" fill="#e8e1cf"/></g>`
+  }
+
   writeFileSync(new URL('bg-cripta.svg', out), svg(
-    noiseFilter('n', 0.02, 3, 0.45, 5),
-    `<rect width="${W}" height="${H}" fill="#22232b"/>${tiles}
-<rect width="${W}" height="${H}" filter="url(#n)"/>${cracks}${candles}${graves}`))
+    noiseFilter('n', 0.02, 3, 0.4, 5) + noiseFilter('n2', 0.06, 2, 0.35, 12),
+    `<rect width="${W}" height="${H}" fill="#2a292e"/>${slabs}
+<rect width="${W}" height="${H}" filter="url(#n)"/>${wear}${cracks}${rug}${mosaic}${bones}${candles}${sarcs}${pillars}`))
 }
 
 // ---------- Jardim ----------
