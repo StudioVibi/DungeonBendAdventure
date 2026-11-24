@@ -56,65 +56,109 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
       return { ...s, loadout }
     })
 
-  const card = (id: ItemId) => {
+  /** item apoiado na estante, com etiqueta de preço pendurada na borda da tábua */
+  const shelfItem = (id: ItemId) => {
     const it = ITEMS[id]
     const afford = save.gold >= it.price
     return (
-      <button key={id} data-sfx="buy" className={`shop-card ${afford ? '' : 'poor'}`} onClick={() => buy(id)} disabled={!afford}>
-        <span className={`sc-val ${it.kind === 'potion' ? 'heal' : 'dmg'}`}>{it.kind === 'potion' ? `+${it.value}` : it.value}</span>
-        <img className="item-art" src={it.icon} alt="" />
-        <span className="sc-name">{it.name}</span>
-        <span className="sc-price"><Gold value={`${it.price}g`} size={18} /></span>
-        {save.stock[id] > 0 && <span className="sc-owned">tem {save.stock[id]}</span>}
+      <button
+        key={id}
+        data-sfx="buy"
+        className={`shelf-item ${afford ? '' : 'poor'}`}
+        onClick={() => buy(id)}
+        disabled={!afford}
+        title={afford ? `Comprar ${it.name}` : `${it.name} — ouro insuficiente`}
+      >
+        {save.stock[id] > 0 && <span className="si-owned">×{save.stock[id]}</span>}
+        <img className="si-art" src={it.icon} alt={it.name} draggable={false} />
+        <span className="price-tag">
+          <span className="tag-name">{it.name}</span>
+          <span className="tag-price">
+            <Gold value={it.price} size={16} />
+          </span>
+          <span className={`tag-effect ${it.kind === 'potion' ? 'heal' : 'dmg'}`}>{it.kind === 'potion' ? `+${it.value} ❤` : `${it.value}`}</span>
+        </span>
       </button>
     )
   }
 
   const slot = (id: PotionId | WeaponId | null, kind: 'potions' | 'weapons', i: number) => (
-    <button key={kind + i} className={`loadout-slot ${id ? '' : 'empty'}`} onClick={() => id && unequip(kind, i)} title={id ? 'Clique para desequipar' : 'Vazio'}>
-      {id ? <img className="item-art" src={ITEMS[id].icon} alt="" /> : '+'}
-      {id && <span className="ls-name">{ITEMS[id].name}</span>}
+    <button
+      key={kind + i}
+      data-sfx={id ? 'back' : 'none'}
+      className={`tb-slot ${id ? '' : 'empty'}`}
+      onClick={() => id && unequip(kind, i)}
+      title={id ? `${ITEMS[id].name} — clique para tirar da mochila` : kind === 'potions' ? 'Slot de poção vazio' : 'Slot de arma vazio'}
+    >
+      {id ? (
+        <>
+          <img src={ITEMS[id].icon} alt="" draggable={false} />
+          <span className={`slot-val ${isPotion(id) ? 'heal' : 'dmg'}`}>{isPotion(id) ? `+${ITEMS[id].value}` : `${ITEMS[id].value}`}</span>
+        </>
+      ) : (
+        <span className="tb-empty">{kind === 'potions' ? 'poção' : 'arma'}</span>
+      )}
     </button>
   )
 
   const owned = [...POTION_IDS, ...WEAPON_IDS].filter((id) => save.stock[id] > 0)
 
   return (
-    <div className="screen shop-screen">
-      <header className="screen-head">
+    <div className="shop">
+      <header className="shop-head">
         <button className="btn ghost" data-sfx="back" onClick={p.onBack}>← {p.backLabel}</button>
-        <h2>Loja</h2>
-        <Gold value={save.gold} size={24} />
+        <h2>Barraca do mercador</h2>
+        <span className="top-gold"><Gold value={save.gold} size={24} /></span>
       </header>
-      <div className="shop-body">
-        <section className="shop-grid">
-          <div className="shop-col">
-            <h3>Poções <small>cura</small></h3>
-            {POTION_IDS.map(card)}
-          </div>
-          <div className="shop-col">
-            <h3>Armas <small>dano flat na próxima onda</small></h3>
-            {WEAPON_IDS.map(card)}
+
+      <main className="shop-room">
+        <section className="shelf-unit">
+          <div className="shelf-sign">Poções</div>
+          <div className="shelf">
+            <div className="shelf-items">{POTION_IDS.map(shelfItem)}</div>
+            <div className="shelf-board" />
           </div>
         </section>
-        <aside className="loadout">
-          <h3>Mochila</h3>
-          <p className="muted small">Leve até 3 poções e 2 armas. A mochila renova a cada andar: cada slot pode ser usado 1x por andar. Ao fim da run, as poções dos slots usados são consumidas; armas não.</p>
-          <div className="loadout-row">{save.loadout.potions.map((id, i) => slot(id, 'potions', i))}</div>
-          <div className="loadout-row">{save.loadout.weapons.map((id, i) => slot(id, 'weapons', i))}</div>
-          <h4>Seus itens</h4>
-          {owned.length === 0 && <p className="muted small">Nada ainda.</p>}
-          <div className="owned-list">
-            {owned.map((id) => (
-              <button key={id} className="owned" onClick={() => equip(id)} title="Clique para equipar">
-                <img className="item-art" src={ITEMS[id].icon} alt="" />
-                <span>{ITEMS[id].name}</span>
-                <b>{equippedCount(save, id)}/{save.stock[id]}</b>
-              </button>
-            ))}
+        <section className="shelf-unit">
+          <div className="shelf-sign">Armas</div>
+          <div className="shelf">
+            <div className="shelf-items">{WEAPON_IDS.slice(0, 2).map(shelfItem)}</div>
+            <div className="shelf-board" />
           </div>
-        </aside>
-      </div>
+          <div className="shelf">
+            <div className="shelf-items">{WEAPON_IDS.slice(2).map(shelfItem)}</div>
+            <div className="shelf-board" />
+          </div>
+        </section>
+      </main>
+
+      <footer className="shop-toolbar">
+        <div className="tb-group">
+          <div className="bag-label">Poções na mochila</div>
+          <div className="slots">{save.loadout.potions.map((id, i) => slot(id, 'potions', i))}</div>
+        </div>
+        <div className="tb-group">
+          <div className="bag-label">Armas na mochila</div>
+          <div className="slots">{save.loadout.weapons.map((id, i) => slot(id, 'weapons', i))}</div>
+        </div>
+        <div className="tb-group tb-inventory">
+          <div className="bag-label">Seus itens · clique para levar</div>
+          <div className="tb-owned">
+            {owned.length === 0 && <span className="muted small">Nada ainda — compre na estante.</span>}
+            {owned.map((id) => {
+              const eq = equippedCount(save, id)
+              const full = eq >= save.stock[id]
+              return (
+                <button key={id} className={`tb-own ${full ? 'full' : ''}`} onClick={() => equip(id)} disabled={full} title={full ? 'Todos já estão na mochila' : `Levar ${ITEMS[id].name}`}>
+                  <img src={ITEMS[id].icon} alt="" draggable={false} />
+                  <b>{eq}/{save.stock[id]}</b>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <p className="tb-help">A mochila renova a cada andar. Poções dos slots usados são gastas ao fim da run; armas ficam.</p>
+      </footer>
     </div>
   )
 }
