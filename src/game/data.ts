@@ -197,6 +197,11 @@ export const ITEMS: Record<ItemId, ItemDef> = {
 export const POTION_IDS: PotionId[] = ['potion_s', 'potion_m', 'potion_l']
 export const WEAPON_IDS: WeaponId[] = ['cleaver', 'machete', 'big_machete', 'giant_cleaver']
 
+/** A arte dos itens fica 22% (da altura do canvas) abaixo do centro: suba esse tanto para centralizar. */
+export const ITEM_ART_OFFSET = 0.22
+/** Proporção do canvas dos itens (500×600). */
+export const ITEM_ART_RATIO = 600 / 500
+
 export const CAMPFIRE_ICON = '/assets/generated/campfire.svg'
 export const STAIRS_ICON = '/assets/generated/stairs.svg'
 export const GOLD_ICON = '/assets/items/gold.webp'

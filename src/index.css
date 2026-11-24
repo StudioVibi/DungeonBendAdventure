@@ -340,3 +340,7 @@ h3, h4 { margin: .4em 0; }
 .dc-actions { display: flex; align-items: center; gap: 8px; }
 .dc-discard { font-size: 12px; font-weight: 700; color: #f1d6d6; background: rgba(40, 10, 12, .75); border: 1px solid #8a2c33; padding: 4px 8px; border-radius: 7px; cursor: pointer; }
 .dc-discard:hover { background: #7a2c31; color: #fff; }
+
+/* arte dos itens fica 22% abaixo do centro do canvas: sobe para centralizar */
+.item-art { transform: translateY(-22%); }
+.drag-ghost.item-art { transform: translate(-50%, -82%) rotate(-8deg); }

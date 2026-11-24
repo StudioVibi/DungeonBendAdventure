@@ -232,7 +232,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
     return (
       <button key={id} className={`shop-card ${afford ? '' : 'poor'}`} onClick={() => buy(id)} disabled={!afford}>
         <span className={`sc-val ${it.kind === 'potion' ? 'heal' : 'dmg'}`}>{it.kind === 'potion' ? `+${it.value}` : it.value}</span>
-        <img src={it.icon} alt="" />
+        <img className="item-art" src={it.icon} alt="" />
         <span className="sc-name">{it.name}</span>
         <span className="sc-price"><Gold value={`${it.price}g`} size={18} /></span>
         {save.stock[id] > 0 && <span className="sc-owned">tem {save.stock[id]}</span>}
@@ -242,7 +242,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
 
   const slot = (id: PotionId | WeaponId | null, kind: 'potions' | 'weapons', i: number) => (
     <button key={kind + i} className={`loadout-slot ${id ? '' : 'empty'}`} onClick={() => id && unequip(kind, i)} title={id ? 'Clique para desequipar' : 'Vazio'}>
-      {id ? <img src={ITEMS[id].icon} alt="" /> : '+'}
+      {id ? <img className="item-art" src={ITEMS[id].icon} alt="" /> : '+'}
       {id && <span className="ls-name">{ITEMS[id].name}</span>}
     </button>
   )
@@ -277,7 +277,7 @@ export function ShopScreen(p: { save: Save; update: (fn: (s: Save) => Save) => v
           <div className="owned-list">
             {owned.map((id) => (
               <button key={id} className="owned" onClick={() => equip(id)} title="Clique para equipar">
-                <img src={ITEMS[id].icon} alt="" />
+                <img className="item-art" src={ITEMS[id].icon} alt="" />
                 <span>{ITEMS[id].name}</span>
                 <b>{equippedCount(save, id)}/{save.stock[id]}</b>
               </button>
@@ -377,7 +377,7 @@ export function ReportModal(p: {
             <h4>{preview ? 'Itens que serão consumidos' : 'Itens consumidos'}</h4>
             <div className="report-items">
               {potions.map(([id, n]) => (
-                <span key={id} className="ri"><img src={ITEMS[id].icon} alt="" /> {ITEMS[id].name} ×{n}</span>
+                <span key={id} className="ri"><img className="item-art" src={ITEMS[id].icon} alt="" /> {ITEMS[id].name} ×{n}</span>
               ))}
             </div>
           </>

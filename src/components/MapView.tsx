@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type RefObject } from 'react'
 import { drawDuration, makeBurst, type Burst } from '../game/fx'
 import { TrailFx } from './TrailFx'
-import { CAMPFIRE_ICON, HERO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
+import { CAMPFIRE_ICON, HERO, ITEM_ART_OFFSET, ITEM_ART_RATIO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
 import { clusterLayout, edgeGeom, ICON_R, type EdgeGeom, type Pt } from '../game/geometry'
 import { floorMap, MAP_H, MAP_W, START, type Wave } from '../game/mapgen'
 import { stairsTrail, waveById, waveHp, type Plan, type SimResult } from '../game/plan'
@@ -103,6 +103,9 @@ function Arrow({ e, ghost, draw }: { e: EdgeGeom; ghost?: boolean; draw?: number
     />
   )
 }
+
+/** altura da arte do item na trilha (largura 44) */
+const ITEM_H = 44 * ITEM_ART_RATIO
 
 type SocketKind = 'any' | 'res' | 'rest'
 
@@ -337,7 +340,11 @@ export function MapView(p: Props) {
                 >
                   <title>Clique para remover</title>
                   <circle r={24} className="item-disc" />
-                  <image href={toolIcon(tool)} x={-22} y={-26} width={44} height={50} />
+                  {tool === 'campfire' ? (
+                    <image href={toolIcon(tool)} x={-20} y={-20} width={40} height={40} />
+                  ) : (
+                    <image href={toolIcon(tool)} x={-22} y={-ITEM_H / 2 - ITEM_H * ITEM_ART_OFFSET} width={44} height={ITEM_H} />
+                  )}
                   {isWeapon(tool) ? (
                     <g transform="translate(0 34)">
                       <rect x={-20} y={-10} width={40} height={20} rx={10} className="weapon-pill" />

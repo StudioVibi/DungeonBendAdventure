@@ -373,7 +373,7 @@ export function DungeonScreen(props: Props) {
 
       {drag && (
         <img
-          className="drag-ghost"
+          className={`drag-ghost ${drag.tool === 'stairs' || drag.tool === 'campfire' ? '' : 'item-art'}`}
           src={drag.tool === 'stairs' ? STAIRS_ICON : drag.tool === 'campfire' ? CAMPFIRE_ICON : ITEMS[drag.tool].icon}
           style={{ left: drag.cx, top: drag.cy }}
           alt=""
@@ -476,7 +476,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
         onPointerDown={disabled ? undefined : p.onStart(tool)}
         title={`${it.name} — ${usedHere ? 'já usado neste andar (renova no próximo)' : 'arraste para a trilha'}`}
       >
-        <img src={it.icon} alt="" draggable={false} />
+        <img className="item-art" src={it.icon} alt="" draggable={false} />
         <span className={`slot-val ${isPotion(tool) ? 'heal' : 'dmg'}`}>{isPotion(tool) ? `+${it.value}` : `⚔${it.value}`}</span>
         {usedHere && <span className="slot-flag">usado</span>}
       </div>
