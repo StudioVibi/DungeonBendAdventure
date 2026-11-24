@@ -28,7 +28,7 @@ export function TrailFx({ bursts, onDone }: { bursts: Burst[]; onDone: (id: numb
           if (p.kind === 'dust') return <circle key={b.id + ':' + i} transform={tr} r={p.size} fill={p.color} opacity={s.opacity} />
           if (p.kind === 'clod') return <circle key={b.id + ':' + i} transform={tr} r={p.size} fill={p.color} opacity={s.opacity} />
           if (p.kind === 'pebble')
-            return <polygon key={b.id + ':' + i} transform={tr} points={p.shape} fill={p.color} stroke="#2a2b31" strokeWidth={1.2} opacity={s.opacity} />
+            return <polygon key={b.id + ':' + i} transform={tr} points={p.shape} fill={p.color} stroke="#2a292e" strokeWidth={1.2} opacity={s.opacity} />
           const h = p.size
           const w = h * 0.34
           return (

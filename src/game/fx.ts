@@ -77,7 +77,7 @@ function pebbleShape(size: number) {
   return pts.join(' ')
 }
 
-const DUST_COLORS = { caverna: ['#b9a48a', '#9c8b78', '#cbb89c', '#8a7a68'], cripta: ['#9a9ca6', '#7d7f8a'], jardim: ['#8a6a3e', '#a07c4a'] }
+const DUST_COLORS = { caverna: ['#b9a48a', '#9c8b78', '#cbb89c', '#8a7a68'], cripta: ['#8f8a80', '#77726a'], jardim: ['#8a6a3e', '#a07c4a'] }
 
 function dust(d: DungeonId, x: number, y: number, nx: number, ny: number, delay: number, strength = 1): Particle {
   const side = Math.random() < 0.5 ? -1 : 1
@@ -134,7 +134,7 @@ export function makeBurst(dungeon: DungeonId, pts: Pt[], dur: number, id: number
         rot: rnd(0, 360),
         vrot: rnd(-720, 720),
         size,
-        color: pick(['#8d8f9a', '#6f717c', '#a5a7b2', '#5d5f69']),
+        color: pick(['#8a857c', '#757067', '#9d978d', '#66625a']),
         sway: 0,
         shape: pebbleShape(size),
       })
