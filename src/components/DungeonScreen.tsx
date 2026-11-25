@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as RPointerEvent } from 'react'
 import {
   CAMPFIRE_ICON,
-  HERO,
   ITEMS,
   STAIRS_ICON,
   dungeonById,
@@ -14,7 +13,6 @@ import {
   addItem,
   appendWave,
   availability,
-  formatTime,
   removeItem,
   removeStairs,
   replaceWave,
@@ -32,7 +30,8 @@ import {
   type Save,
 } from '../game/plan'
 import { MapView, floorGeometry, type Ghost } from './MapView'
-import { Gold, HeartIcon, SoundToggle } from './ui'
+import { SoundToggle } from './ui'
+import { Hourglass, LifeFlask, RunGold } from './Gauges'
 import { Cap } from './Capsule'
 
 type DragTool = ToolId | 'stairs'
@@ -313,75 +312,92 @@ export function DungeonScreen(props: Props) {
     setDrag({ tool, cx: e.clientX, cy: e.clientY })
   }
 
+  const showPrev = !!previewSim
   return (
     <div className="dungeon-screen">
-      <Hud {...props} sim={sim} shown={shown} preview={!!previewSim} dungeonName={dungeon.name} totalSteps={totalSteps} />
+      <TopBar {...props} dungeonName={dungeon.name} />
 
-      <div className="floor-tabs">
-        {plan.floors.map((f, i) => {
-          const fr = sim.floors[i]
-          const dead = sim.death && sim.death.floor <= i
-          const closable = i > 0 && i === plan.floors.length - 1
-          return (
-            <button key={i} className={`tab ${i === floorIdx ? 'active' : ''} ${dead ? 'dead' : ''}`} onClick={() => props.setFloorIdx(i)}>
-              {closable && (
-                <span
-                  className="tab-close"
-                  data-sfx="back"
-                  title="Fechar este andar (remove a escada do andar anterior)"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    commit(removeStairs(plan, i - 1))
-                    if (floorIdx >= i) props.setFloorIdx(i - 1)
-                  }}
+      <div className="map-area">
+        <div className={`map-frame ${drag ? 'dragging' : ''} ${linking || edgeDrag?.moved ? 'linking' : ''}`}>
+          {hint && <div className="map-hint flash">{hint}</div>}
+          <MapView
+            plan={preview?.plan ?? plan}
+            sim={shown}
+            floorIdx={floorIdx}
+            ghost={preview?.ghost ?? null}
+            dropStep={dropTarget?.kind === 'edge' ? dropTarget.stepIdx : null}
+            dropBlocked={!!dropTarget && !dropTarget.ok}
+            tooFarWaveId={tooFarWaveId}
+            tailPt={tailPt}
+            svgRef={svgRef}
+            hoverWaveId={hoverWaveId}
+            guides={guides}
+            hiddenEdge={hiddenEdge}
+            onEdgePointerDown={onEdgePointerDown}
+            onHoverWave={setHoverWaveId}
+            onWaveClick={onWaveClick}
+            onItemClick={(si, ii) => commit(removeItem(plan, floorIdx, si, ii))}
+            onStairsClick={() => floorIdx + 1 < plan.floors.length && setFloorIdx(floorIdx + 1)}
+            onTailPointerDown={onTailPointerDown}
+            onSvgPointerMove={onSvgPointerMove}
+            onSvgPointerUp={onSvgPointerUp}
+            hud={
+              <>
+                <LifeFlask hp={sim.hpEnd} preview={showPrev ? shown.hpEnd : null} />
+                <Hourglass time={sim.totalTime} preview={showPrev ? shown.totalTime : null} />
+                <RunGold x={START.x} y={START.y + 84} gold={sim.goldLoot} alive={sim.alive} preview={showPrev ? shown.goldLoot : null} />
+              </>
+            }
+          />
+          {floor.steps.length === 0 && !drag && (
+            <div className="map-hint">
+              {floorIdx === 0
+                ? 'Clique numa onda (ou arraste a partir do Alberto) para traçar a trilha.'
+                : `Andar ${floorIdx + 1}: monstros com +${floorIdx} nível. Continue a trilha!`}
+            </div>
+          )}
+          {drag && drag.tool !== 'stairs' && floor.steps.length === 0 && <div className="map-hint">Conecte uma onda primeiro para colocar itens na trilha.</div>}
+
+          {/* andares: divisórias de caderno saindo da borda do mapa */}
+          <nav className="floor-tabs">
+            {plan.floors.map((f, i) => {
+              const fr = sim.floors[i]
+              const dead = !!sim.death && sim.death.floor <= i
+              const closable = i > 0 && i === plan.floors.length - 1
+              return (
+                <button
+                  key={i}
+                  className={`tab ${i === floorIdx ? 'active' : ''} ${dead ? 'dead' : ''}`}
+                  style={{ '--tab': TAB_COLORS[i % TAB_COLORS.length] } as CSSProperties}
+                  onClick={() => props.setFloorIdx(i)}
+                  title={`Andar ${i + 1} · nível ${i + 1} · ${f.steps.length} ${f.steps.length === 1 ? 'onda' : 'ondas'}`}
                 >
-                  ×
-                </span>
-              )}
-              Andar {i + 1}
-              <span className="tab-sub">
-                Nv {i + 1} · {f.steps.length} {f.steps.length === 1 ? 'onda' : 'ondas'} · <HeartIcon size={13} dead={fr.hpEnd <= 0} /> {fr.hpEnd}
-              </span>
-            </button>
-          )
-        })}
+                  <span className="tab-num">{i + 1}</span>
+                  <span className="tab-hp">{dead ? '☠' : fr.hpEnd}</span>
+                  {closable && (
+                    <span
+                      className="tab-close"
+                      data-sfx="back"
+                      title="Fechar este andar (remove a escada do andar anterior)"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        commit(removeStairs(plan, i - 1))
+                        if (floorIdx >= i) props.setFloorIdx(i - 1)
+                      }}
+                    >
+                      ×
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
       </div>
 
-      <div className={`map-wrap ${drag ? 'dragging' : ''} ${linking || edgeDrag?.moved ? 'linking' : ''}`}>
-        {hint && <div className="map-hint flash">{hint}</div>}
-        <MapView
-          plan={preview?.plan ?? plan}
-          sim={shown}
-          floorIdx={floorIdx}
-          ghost={preview?.ghost ?? null}
-          dropStep={dropTarget?.kind === 'edge' ? dropTarget.stepIdx : null}
-          dropBlocked={!!dropTarget && !dropTarget.ok}
-          tooFarWaveId={tooFarWaveId}
-          tailPt={tailPt}
-          svgRef={svgRef}
-          hoverWaveId={hoverWaveId}
-          guides={guides}
-          hiddenEdge={hiddenEdge}
-          onEdgePointerDown={onEdgePointerDown}
-          onHoverWave={setHoverWaveId}
-          onWaveClick={onWaveClick}
-          onItemClick={(si, ii) => commit(removeItem(plan, floorIdx, si, ii))}
-          onStairsClick={() => floorIdx + 1 < plan.floors.length && setFloorIdx(floorIdx + 1)}
-          onTailPointerDown={onTailPointerDown}
-          onSvgPointerMove={onSvgPointerMove}
-          onSvgPointerUp={onSvgPointerUp}
-        />
-        {floor.steps.length === 0 && !drag && (
-          <div className="map-hint">
-            {floorIdx === 0
-              ? 'Clique numa onda (ou arraste a partir do Alberto) para traçar a trilha.'
-              : `Andar ${floorIdx + 1}: monstros com +${floorIdx} nível. Continue a trilha!`}
-          </div>
-        )}
-        {drag && drag.tool !== 'stairs' && floor.steps.length === 0 && <div className="map-hint">Conecte uma onda primeiro para colocar itens na trilha.</div>}
-      </div>
-
-      <Bag {...props} onStart={startDrag} dragging={drag?.tool ?? null} stairsUsed={!!floor.stairs} />
+      <Bag {...props} onStart={startDrag} dragging={drag?.tool ?? null} stairsUsed={!!floor.stairs} totalSteps={totalSteps}>
+        <Situation sim={sim} shown={shown} preview={showPrev} totalSteps={totalSteps} />
+      </Bag>
 
       {drag && (
         <img
@@ -395,83 +411,41 @@ export function DungeonScreen(props: Props) {
   )
 }
 
-// ---------------- HUD ----------------
+/** cores das divisórias (como as de um caderno) */
+const TAB_COLORS = ['#e0614f', '#f0b44f', '#7cc06a', '#5fa8d8', '#a57fd8']
 
-function Delta({ a, b, invert = false, fmt = (n: number) => String(n) }: { a: number; b: number; invert?: boolean; fmt?: (n: number) => string }) {
-  if (a === b) return null
-  const good = invert ? b < a : b > a
-  return <span className={`delta ${good ? 'good' : 'bad'}`}>→ {fmt(b)}</span>
+// ---------------- topo: só navegação e ajustes ----------------
+
+function TopBar(p: Props & { dungeonName: string }) {
+  return (
+    <header className="dungeon-top">
+      <button className="btn ghost" data-sfx="back" onClick={p.onLeave}>← Dungeons</button>
+      <div className="hud-title">{p.dungeonName}</div>
+      <div className="dt-spacer" />
+      <button className="btn ghost" onClick={p.onCollection}>Coleção</button>
+      <button className="btn ghost" onClick={p.onShop}>Loja</button>
+      <SoundToggle />
+    </header>
+  )
 }
 
-function Hud(p: Props & { sim: ReturnType<typeof simulate>; shown: ReturnType<typeof simulate>; preview: boolean; dungeonName: string; totalSteps: number }) {
-  const { sim, shown } = p
-  const hpPct = Math.max(0, Math.min(1, sim.hpEnd / HERO.maxHp))
+// ---------------- situação (texto puro, centro inferior do mapa) ----------------
+
+function Situation({ sim, shown, preview, totalSteps }: { sim: ReturnType<typeof simulate>; shown: ReturnType<typeof simulate>; preview: boolean; totalSteps: number }) {
+  if (!totalSteps && !preview) return null
+  const text = (r: ReturnType<typeof simulate>) => (r.alive ? 'Survives' : `Deficit ${r.deficit} · floor ${r.death!.floor + 1}, wave ${r.death!.step + 1}`)
+  const changed = preview && (shown.alive !== sim.alive || shown.deficit !== sim.deficit)
   return (
-    <header className="hud">
-      <div className="hud-left">
-        <button className="btn ghost" data-sfx="back" onClick={p.onLeave}>← Dungeons</button>
-        <div className="hud-title">{p.dungeonName}</div>
-      </div>
-
-      <div className="hud-stats">
-        <div className="stat">
-          <div className="stat-label">Vida do {HERO.name}</div>
-          <div className="hpbar">
-            <div className="hpbar-fill" style={{ width: `${hpPct * 100}%` }} />
-            <span className="hpbar-text">
-              <HeartIcon size={15} dead={sim.hpEnd <= 0} /> {sim.hpEnd} / {HERO.maxHp}
-            </span>
-          </div>
-          {p.preview && <Delta a={sim.hpEnd} b={shown.hpEnd} />}
-        </div>
-        <div className={`stat status ${sim.alive ? 'ok' : 'bad'}`}>
-          <div className="stat-label">Situação</div>
-          <div className="stat-value">
-            {sim.alive ? (
-              p.totalSteps ? 'Survives ✓' : '—'
-            ) : (
-              <>
-                ☠ Deficit {sim.deficit} ♥ <span className="muted">(floor {sim.death!.floor + 1}, wave {sim.death!.step + 1})</span>
-              </>
-            )}
-            {p.preview && shown.alive !== sim.alive && <span className={`delta ${shown.alive ? 'good' : 'bad'}`}>→ {shown.alive ? 'survives' : `deficit ${shown.deficit}`}</span>}
-            {p.preview && !shown.alive && !sim.alive && shown.deficit !== sim.deficit && <Delta a={sim.deficit} b={shown.deficit} invert />}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Tempo na dungeon</div>
-          <div className="stat-value">
-            ⏳ {formatTime(sim.totalTime)}
-            {p.preview && <Delta a={sim.totalTime} b={shown.totalTime} invert fmt={formatTime} />}
-          </div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Ouro da run</div>
-          <div className={`stat-value ${sim.alive ? '' : 'muted strike'}`}>
-            <Gold value={sim.goldLoot} />
-            {p.preview && <Delta a={sim.goldLoot} b={shown.goldLoot} />}
-          </div>
-        </div>
-      </div>
-
-      <div className="hud-right">
-        <div className="wallet" title="Seu ouro">
-          <Gold value={p.save.gold} size={22} />
-        </div>
-        <SoundToggle />
-        <button className="btn" onClick={p.onCollection}>Coleção</button>
-        <button className="btn" onClick={p.onShop}>Loja</button>
-        <button className="btn primary" disabled={!p.totalSteps} onClick={p.onFinish}>
-          Concluir run
-        </button>
-      </div>
-    </header>
+    <div className={`situation ${sim.alive ? 'ok' : 'bad'}`}>
+      {totalSteps ? <span>{(sim.alive ? '✓ ' : '☠ ') + text(sim)}</span> : null}
+      {changed && <span className={`sit-next ${shown.alive ? 'ok' : 'bad'}`}>→ {text(shown)}</span>}
+    </div>
   )
 }
 
 // ---------------- Mochila ----------------
 
-function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; dragging: DragTool | null; stairsUsed: boolean }) {
+function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; dragging: DragTool | null; stairsUsed: boolean; totalSteps: number; children: ReactNode }) {
   const { save, plan, floorIdx } = p
   // para cada slot, decide se ele já foi "gasto" neste andar
   const seen: Partial<Record<ToolId, number>> = {}
@@ -529,8 +503,9 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
           </div>
         </div>
       </div>
-      <div className="bag-help">
-        Trilhas mais longas levam mais tempo e têm mais encaixes · arraste itens para os encaixes
+      <div className="bag-center">
+        {p.children}
+        {!p.totalSteps && <div className="bag-help">Trilhas mais longas levam mais tempo e têm mais encaixes · arraste itens para os encaixes</div>}
       </div>
       <div className="bag-actions">
         <button className="btn ghost" disabled={!p.canUndo} onClick={p.undo} title="Ctrl/Cmd+Z">↶ Desfazer</button>
@@ -543,6 +518,9 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
           }}
         >
           Limpar andar
+        </button>
+        <button className="btn primary start-btn" disabled={!p.totalSteps} onClick={p.onFinish}>
+          {p.queued ? 'Colocar na fila' : 'Concluir run'}
         </button>
       </div>
     </footer>

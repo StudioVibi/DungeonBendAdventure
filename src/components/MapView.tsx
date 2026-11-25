@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent, type RefObject } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as RPointerEvent, type RefObject } from 'react'
 import { drawDuration, makeBurst, type Burst } from '../game/fx'
 import { TrailFx } from './TrailFx'
 import { construction } from '../game/audio'
@@ -74,6 +74,8 @@ interface Props {
   onTailPointerDown: (e: RPointerEvent) => void
   onSvgPointerMove: (e: RPointerEvent) => void
   onSvgPointerUp: (e: RPointerEvent) => void
+  /** mostradores diegéticos (vida, ampulheta, ouro da run), desenhados por cima do mapa */
+  hud?: ReactNode
 }
 
 /** `draw`: duração (ms) da animação de construção, se este trecho acabou de ser criado. */
@@ -441,6 +443,7 @@ export function MapView(p: Props) {
           <circle r={g.tailR + 2} className="tail-ring" />
         </g>
       )}
+      {p.hud}
     </svg>
   )
 }
