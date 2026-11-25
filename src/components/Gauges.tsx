@@ -1,21 +1,25 @@
-import { useEffect, useId, useRef, useState } from 'react'
-import { GOLD_ICON, HERO } from '../game/data'
+import { useEffect, useId, useState } from 'react'
+import { HERO } from '../game/data'
 import { MAP_W } from '../game/mapgen'
-import { formatTime } from '../game/plan'
+import { formatTime, type SimResult } from '../game/plan'
 import { Capsule, capWidth } from './Capsule'
 
-/** Dispara um motion quando o valor confirmado muda (prévias não contam). */
+/**
+ * Dispara um motion quando o valor confirmado muda (prévias não contam).
+ * A diferença é derivada durante o render (sem efeito + setState), então não custa um render extra.
+ */
 function useChangeFx(value: number) {
-  const prev = useRef(value)
+  const [prev, setPrev] = useState(value)
   const [fx, setFx] = useState<{ diff: number; key: number } | null>(null)
+  if (value !== prev) {
+    setPrev(value)
+    setFx({ diff: value - prev, key: (fx?.key ?? 0) + 1 })
+  }
   useEffect(() => {
-    const diff = value - prev.current
-    prev.current = value
-    if (diff === 0) return
-    setFx({ diff, key: Date.now() })
+    if (!fx) return
     const t = setTimeout(() => setFx(null), 1300)
     return () => clearTimeout(t)
-  }, [value])
+  }, [fx])
   return fx
 }
 
@@ -152,24 +156,23 @@ export function Hourglass({ time, preview }: { time: number; preview: number | n
   )
 }
 
-/** Ouro acumulado na run, logo abaixo do Alberto. */
-export function RunGold({ x, y, gold, alive, preview }: { x: number; y: number; gold: number; alive: boolean; preview: number | null }) {
-  const fx = useChangeFx(gold)
-  const showPrev = preview !== null && preview !== gold
-  const txt = `+${gold}`
-  const extra = showPrev ? ` → +${preview}` : ''
-  const w = capWidth((txt + extra).length, 17, 26)
+/** Estado do Alberto (situação), em texto puro logo abaixo dele. */
+export function HeroState({ x, y, sim, shown, preview, empty }: { x: number; y: number; sim: SimResult; shown: SimResult; preview: boolean; empty: boolean }) {
+  const text = (r: SimResult) => (r.alive ? 'Survives' : `Deficit ${r.deficit} · floor ${r.death!.floor + 1}, wave ${r.death!.step + 1}`)
+  const changed = preview && (shown.alive !== sim.alive || shown.deficit !== sim.deficit)
+  if (empty && !changed) return null
   return (
-    <g transform={`translate(${x} ${y})`} className={`run-gold ${alive ? '' : 'lost'}`} pointerEvents="none">
-      <g key={fx?.key} className={fx && fx.diff > 0 ? 'rg-pop' : ''}>
-        <Capsule w={w} h={32} tone={alive ? 'gold' : 'neutral'} className="cap-lg">
-          <image href={GOLD_ICON} x={-w / 2 + 14} y={-12} width={22} height={25} />
-          <text x={13} y={1} textAnchor="middle" dominantBaseline="middle" className={alive ? '' : 'rg-strike'}>
-            {txt}
-            {showPrev && <tspan className="rg-prev">{extra}</tspan>}
-          </text>
-        </Capsule>
-      </g>
+    <g transform={`translate(${x} ${y})`} className="hero-state" pointerEvents="none">
+      {!empty && (
+        <text className={sim.alive ? 'ok' : 'bad'} dominantBaseline="middle">
+          {(sim.alive ? '✓ ' : '☠ ') + text(sim)}
+        </text>
+      )}
+      {changed && (
+        <text y={empty ? 0 : 32} className={`next ${shown.alive ? 'ok' : 'bad'}`} dominantBaseline="middle">
+          → {text(shown)}
+        </text>
+      )}
     </g>
   )
 }

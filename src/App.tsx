@@ -91,10 +91,18 @@ export default function App() {
     force((n) => n + 1)
   }, [setPlan])
 
-  const go = (to: Screen) => {
-    setStack((st) => (to === 'select' ? [] : [...st, screen].slice(-10)))
-    setScreen(to)
-  }
+  const go = useCallback(
+    (to: Screen) => {
+      setStack((st) => (to === 'select' ? [] : [...st, screen].slice(-10)))
+      setScreen(to)
+    },
+    [screen],
+  )
+  // callbacks estáveis: a tela da dungeon é memorizada e não deve redesenhar a cada segundo
+  const goShop = useCallback(() => go('shop'), [go])
+  const goCollection = useCallback(() => go('collection'), [go])
+  const goSelect = useCallback(() => go('select'), [go])
+  const finish = useCallback(() => plan && setReport({ mode: 'preview', sim: simulate(plan) }), [plan])
 
   /** Abre a dungeon limpando do rascunho itens que a mochila/estoque não comporta mais. */
   const openDungeon = (d: DungeonId) => {
@@ -273,10 +281,10 @@ export default function App() {
           undo={undo}
           canUndo={history.current.length > 0}
           queued={queueStart > now}
-          onShop={() => go('shop')}
-          onCollection={() => go('collection')}
-          onLeave={() => go('select')}
-          onFinish={() => setReport({ mode: 'preview', sim: simulate(plan) })}
+          onShop={goShop}
+          onCollection={goCollection}
+          onLeave={goSelect}
+          onFinish={finish}
         />
       )}
       {screen === 'shop' && <ShopScreen save={save} update={update} onBack={back} backLabel={backLabel} onCollection={() => go('collection')} />}

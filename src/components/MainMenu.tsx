@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { DUNGEONS, GOLD_ICON, HERO, MONSTERS, dungeonById, type DungeonId } from '../game/data'
 import LAYOUT from '../game/overworld-layout.json'
 import { runStatus, type Run, type Save } from '../game/plan'
@@ -87,15 +87,20 @@ export function MainMenu(p: Props) {
   // o Alberto vai para a porta da dungeon onde está a run
   const heroPos = running ? { x: PLACES[running.dungeon].door.x + 52, y: PLACES[running.dungeon].door.y + 14 } : LAYOUT.hero
 
-  return (
-    <div className="menu">
-      <TopBar {...p} />
-      <div className="menu-body">
-      <div className="world-wrap">
-        <svg className="world" viewBox={`0 0 ${LAYOUT.scene.w} ${LAYOUT.scene.h}`} preserveAspectRatio="xMidYMax meet">
-          <image href="/assets/generated/overworld/plain.svg" width={LAYOUT.scene.w} height={LAYOUT.scene.h} />
-          {/* cena por profundidade: quem tem a base mais baixa fica na frente (árvores × barraca × Alberto) */}
-          {[
+  // cenário (lugares, árvores, Alberto) memorizado: o relógio de 1s só redesenha etiquetas e fila
+  const enterRef = useRef(enter)
+  useEffect(() => {
+    enterRef.current = enter
+  })
+  const statusSig = DUNGEONS.map((d) => {
+    const r = runOf(d.id)
+    return r ? runStatus(r, now) : '-'
+  }).join()
+  const runningId = running?.dungeon ?? null
+  const scene = useMemo(
+    () => (
+      <>
+        {[
             ...DRAW_ORDER.map((id) => ({ kind: 'place' as const, id, base: PLACES[id].y + PLACES[id].h / 2 - 24 })),
             ...TREES.map((t, i) => ({ kind: 'tree' as const, i, base: t.y })),
             { kind: 'hero' as const, base: running ? PLACES[running.dungeon].y + PLACES[running.dungeon].h / 2 - 23 : heroPos.y + 12 },
@@ -136,12 +141,26 @@ export function MainMenu(p: Props) {
                   className={`place ${hover === id ? 'hot' : ''} ${st ? 'st-' + st : ''}`}
                   onPointerEnter={() => open(id)}
                   onPointerLeave={scheduleClose}
-                  onClick={() => (hover === id ? enter(id) : open(id))}
+                  onClick={() => (hover === id ? enterRef.current(id) : open(id))}
                 >
                   <image href={`/assets/generated/overworld/${id}.svg`} x={pl.x - pl.w / 2} y={pl.y - pl.h / 2} width={pl.w} height={pl.h} />
                 </g>
               )
             })}
+      </>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [hover, statusSig, runningId],
+  )
+
+  return (
+    <div className="menu">
+      <TopBar {...p} />
+      <div className="menu-body">
+      <div className="world-wrap">
+        <svg className="world" viewBox={`0 0 ${LAYOUT.scene.w} ${LAYOUT.scene.h}`} preserveAspectRatio="xMidYMax meet">
+          <image href="/assets/generated/overworld/plain.svg" width={LAYOUT.scene.w} height={LAYOUT.scene.h} />
+          {scene}
           {/* marcadores de estado no mundo */}
           {DUNGEONS.map((d) => {
             const pl = PLACES[d.id]

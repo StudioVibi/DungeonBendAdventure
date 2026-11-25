@@ -102,14 +102,13 @@ h3, h4 { margin: .4em 0; }
 }
 .tab-close:hover { background: #7a2c31; color: #fff; }
 
-/* situação: texto puro no centro inferior da tela, sem título nem cápsula */
-.bag-center { flex: 1 1 0; align-self: center; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
-.situation { display: flex; flex-direction: column; align-items: center; max-width: 100%; text-align: center; font-family: 'Jaro', sans-serif; font-size: clamp(22px, 2.3vw, 32px); line-height: 1; letter-spacing: .02em; text-shadow: 0 2px 0 #000; }
-.situation.ok { color: #8ff08a; }
-.situation.bad { color: #ff7a7a; }
-.sit-next { font-size: .68em; }
-.sit-next.ok { color: #8ff08a; }
-.sit-next.bad { color: #ff7a7a; }
+.bag-center { flex: 1 1 0; align-self: center; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+
+/* estado do Alberto: texto puro logo abaixo dele, sem título nem cápsula */
+.hero-state text { font-family: 'Jaro', sans-serif; font-size: 34px; letter-spacing: .02em; paint-order: stroke; stroke: #120a08; stroke-width: 7px; stroke-linejoin: round; }
+.hero-state text.next { font-size: 25px; }
+.hero-state text.ok { fill: #8ff08a; }
+.hero-state text.bad { fill: #ff7a7a; }
 
 /* ---- mostradores diegéticos ---- */
 .lf-chain { stroke: #6b5a48; stroke-width: 5; stroke-dasharray: 7 4; stroke-linecap: round; }
@@ -167,13 +166,8 @@ h3, h4 { margin: .4em 0; }
 @keyframes hg-wobble { 20% { transform: rotate(-7deg); } 45% { transform: rotate(5deg); } 70% { transform: rotate(-2deg); } }
 .hg-float { animation: float-up 1.2s ease-out forwards; }
 
-.run-gold.lost { opacity: .7; }
-.cap-svg .cap-ink text.rg-strike { text-decoration: line-through; }
-.cap-svg .cap-ink tspan.rg-prev { font-size: 14px; opacity: .85; }
-.rg-pop { animation: rg-pop .5s cubic-bezier(.2, 1.6, .4, 1); transform-box: fill-box; transform-origin: 50% 50%; }
-@keyframes rg-pop { 40% { transform: scale(1.18); } }
 @media (prefers-reduced-motion: reduce) {
-  .lf-body.hit, .lf-body.heal, .hg-body.pour, .rg-pop, .lf-liquid path { animation: none; }
+  .lf-body.hit, .lf-body.heal, .hg-body.pour, .lf-liquid path { animation: none; }
 }
 
 /* trilha */

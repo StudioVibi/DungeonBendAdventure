@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as RPointerEvent } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from 'react'
 import {
   CAMPFIRE_ICON,
   ITEMS,
@@ -31,7 +31,7 @@ import {
 } from '../game/plan'
 import { MapView, floorGeometry, type Ghost } from './MapView'
 import { SoundToggle } from './ui'
-import { Hourglass, LifeFlask, RunGold } from './Gauges'
+import { HeroState, Hourglass, LifeFlask } from './Gauges'
 import { Cap } from './Capsule'
 
 type DragTool = ToolId | 'stairs'
@@ -52,7 +52,8 @@ interface Props {
   onFinish: () => void
 }
 
-export function DungeonScreen(props: Props) {
+/** Memorizado: o relógio de 1s do App não redesenha o mapa quando nada mudou. */
+export const DungeonScreen = memo(function DungeonScreen(props: Props) {
   const { plan, floorIdx, commit, setFloorIdx, undo } = props
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [drag, setDrag] = useState<{ tool: DragTool; cx: number; cy: number } | null>(null)
@@ -345,7 +346,7 @@ export function DungeonScreen(props: Props) {
               <>
                 <LifeFlask hp={sim.hpEnd} preview={showPrev ? shown.hpEnd : null} />
                 <Hourglass time={sim.totalTime} preview={showPrev ? shown.totalTime : null} />
-                <RunGold x={START.x} y={START.y + 84} gold={sim.goldLoot} alive={sim.alive} preview={showPrev ? shown.goldLoot : null} />
+                <HeroState x={START.x - 100} y={START.y + 80} sim={sim} shown={shown} preview={showPrev} empty={!totalSteps} />
               </>
             }
           />
@@ -395,9 +396,7 @@ export function DungeonScreen(props: Props) {
         </div>
       </div>
 
-      <Bag {...props} onStart={startDrag} dragging={drag?.tool ?? null} stairsUsed={!!floor.stairs} totalSteps={totalSteps}>
-        <Situation sim={sim} shown={shown} preview={showPrev} totalSteps={totalSteps} />
-      </Bag>
+      <Bag {...props} onStart={startDrag} dragging={drag?.tool ?? null} stairsUsed={!!floor.stairs} totalSteps={totalSteps} />
 
       {drag && (
         <img
@@ -409,7 +408,7 @@ export function DungeonScreen(props: Props) {
       )}
     </div>
   )
-}
+})
 
 /** cores das divisórias (como as de um caderno) */
 const TAB_COLORS = ['#e0614f', '#f0b44f', '#7cc06a', '#5fa8d8', '#a57fd8']
@@ -429,23 +428,9 @@ function TopBar(p: Props & { dungeonName: string }) {
   )
 }
 
-// ---------------- situação (texto puro, centro inferior do mapa) ----------------
-
-function Situation({ sim, shown, preview, totalSteps }: { sim: ReturnType<typeof simulate>; shown: ReturnType<typeof simulate>; preview: boolean; totalSteps: number }) {
-  if (!totalSteps && !preview) return null
-  const text = (r: ReturnType<typeof simulate>) => (r.alive ? 'Survives' : `Deficit ${r.deficit} · floor ${r.death!.floor + 1}, wave ${r.death!.step + 1}`)
-  const changed = preview && (shown.alive !== sim.alive || shown.deficit !== sim.deficit)
-  return (
-    <div className={`situation ${sim.alive ? 'ok' : 'bad'}`}>
-      {totalSteps ? <span>{(sim.alive ? '✓ ' : '☠ ') + text(sim)}</span> : null}
-      {changed && <span className={`sit-next ${shown.alive ? 'ok' : 'bad'}`}>→ {text(shown)}</span>}
-    </div>
-  )
-}
-
 // ---------------- Mochila ----------------
 
-function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; dragging: DragTool | null; stairsUsed: boolean; totalSteps: number; children: ReactNode }) {
+function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; dragging: DragTool | null; stairsUsed: boolean; totalSteps: number }) {
   const { save, plan, floorIdx } = p
   // para cada slot, decide se ele já foi "gasto" neste andar
   const seen: Partial<Record<ToolId, number>> = {}
@@ -504,8 +489,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
         </div>
       </div>
       <div className="bag-center">
-        {p.children}
-        {!p.totalSteps && <div className="bag-help">Trilhas mais longas levam mais tempo e têm mais encaixes · arraste itens para os encaixes</div>}
+        <div className="bag-help">Trilhas mais longas levam mais tempo e têm mais encaixes · arraste itens para os encaixes</div>
       </div>
       <div className="bag-actions">
         <button className="btn ghost" disabled={!p.canUndo} onClick={p.undo} title="Ctrl/Cmd+Z">↶ Desfazer</button>
