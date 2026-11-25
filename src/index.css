@@ -116,8 +116,6 @@ h3, h4 { margin: .4em 0; }
 .lf-fill { fill: #d8343c; }
 .lf-surface { fill: none; stroke: #ff8a8a; stroke-width: .7; }
 .lf-liquid { transition: transform .7s cubic-bezier(.3, .8, .3, 1); }
-/* o dano chega junto com a trilha: o motion espera o traçado terminar (e não disputa o mesmo frame) */
-.life-flask.late .lf-liquid { transition-delay: .55s; }
 .lf-rim { fill: none; stroke: #2a1414; stroke-width: 1.5; }
 .lf-rim2 { fill: none; stroke: #c9a46a; stroke-width: 2.6; }
 .lf-shine { fill: none; stroke: #fff; stroke-opacity: .7; stroke-width: .9; stroke-linecap: round; }
@@ -130,8 +128,8 @@ h3, h4 { margin: .4em 0; }
 .lf-max { font-size: 18px; font-weight: 900; fill: #ffd6d6; paint-order: stroke; stroke: #2a0a0c; stroke-width: 4px; }
 .life-flask.dead .lf-hp { fill: #ff7a7a; }
 .lf-body { transform-box: fill-box; transform-origin: 50% 40%; }
-.lf-body.hit { animation: lf-shake .5s cubic-bezier(.36, .07, .19, .97) .55s; }
-.lf-body.hit .lf-flash { fill: #ff2a2a; animation: lf-flash .55s ease-out .55s; }
+.lf-body.hit { animation: lf-shake .5s cubic-bezier(.36, .07, .19, .97); }
+.lf-body.hit .lf-flash { fill: #ff2a2a; animation: lf-flash .55s ease-out; }
 @keyframes lf-shake {
   15% { transform: translate(-6px, 2px) rotate(-4deg); } 30% { transform: translate(5px, -1px) rotate(3deg); }
   45% { transform: translate(-4px, 1px) rotate(-2deg); } 60% { transform: translate(3px, 0) rotate(1deg); } 80% { transform: translate(-1px, 0); }
@@ -144,7 +142,7 @@ h3, h4 { margin: .4em 0; }
 .lf-bubbles circle:nth-child(2) { animation-delay: .15s; }
 .lf-bubbles circle:nth-child(3) { animation-delay: .3s; }
 @keyframes lf-bubble { to { transform: translateY(-14px); opacity: 0; } }
-.lf-float { animation: float-down 1.2s ease-out .55s both; }
+.lf-float { animation: float-down 1.2s ease-out both; }
 .lf-float.up { animation-name: float-up; }
 @keyframes float-down { 0% { opacity: 0; transform: translateY(-14px); } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(18px); } }
 @keyframes float-up { 0% { opacity: 0; transform: translateY(14px); } 15% { opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-18px); } }
@@ -152,23 +150,17 @@ h3, h4 { margin: .4em 0; }
 .hg-back { fill: rgba(20, 14, 10, .55); }
 .hg-glass { fill: rgba(200, 230, 255, .1); stroke: #e8f2ff; stroke-opacity: .75; stroke-width: 3; }
 .hg-shine { fill: none; stroke: #fff; stroke-opacity: .45; stroke-width: 3; stroke-linecap: round; }
-.hg-sand { fill: #e8b85a; transition: y .7s ease, d .7s ease; }
+.hg-sand { fill: #e8b85a; }
 .hg-sand-bot { fill: #d9a443; }
 .hg-stream { stroke: #f0c86a; stroke-width: 2.5; stroke-dasharray: 3 3; }
-.hourglass.late .hg-sand { transition-delay: .55s; }
 .hg-plate { fill: #8a5a32; stroke: #2a180c; stroke-width: 3; }
 .hg-post { fill: #6b4423; stroke: #2a180c; stroke-width: 3; }
 .hg-grain { stroke: rgba(42, 24, 12, .35); stroke-width: 1.5; }
 .hg-nail { fill: #d8c08a; stroke: #2a180c; stroke-width: 1; }
 .hg-wood { display: none; }
-.hg-body { transform-box: fill-box; transform-origin: 50% 50%; }
-.hg-body.pour { animation: hg-wobble .7s ease-out .55s; }
-.hg-body.pour .hg-stream { stroke-width: 5; stroke: #ffe08a; animation: march .5s linear .55s 2; }
-@keyframes hg-wobble { 20% { transform: rotate(-7deg); } 45% { transform: rotate(5deg); } 70% { transform: rotate(-2deg); } }
-.hg-float { animation: float-up 1.2s ease-out .55s both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .lf-body.hit, .lf-body.heal, .hg-body.pour { animation: none; }
+  .lf-body.hit, .lf-body.heal { animation: none; }
 }
 
 /* trilha */

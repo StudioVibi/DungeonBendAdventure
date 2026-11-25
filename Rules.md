@@ -78,6 +78,8 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 - O topo da tela é para navegação e ajustes, não para HUD.
 - A vida do Alberto aparece num mostrador diegético no canto superior esquerdo do fundo, e o tempo numa ampulheta diegética no canto superior direito.
 - Cada trilha construída faz o mostrador de vida sofrer o dano da onda escolhida; recursos de cura nas trilhas fazem ele regenerar.
+- Os mostradores de vida e tempo e o estado do Alberto só consolidam os valores da onda conectada quando a trilha termina de ser construída.
+- A ampulheta não tem motion: só a imagem e o valor mudam.
 - A tela da dungeon não mostra o ouro total da conta; o ouro aparece só na etiqueta de cada onda.
 - O estado do Alberto (a situação) aparece embaixo dele, só como texto, sem título nem cápsula.
 - A etiqueta de cada onda mostra a vida que ela tira e o ouro que ela dá.

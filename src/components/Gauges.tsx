@@ -41,7 +41,7 @@ export function LifeFlask({ hp, preview }: { hp: number; preview: number | null 
   const x = 30
   const y = 30
   return (
-    <g className={`life-flask ${dead ? 'dead' : ''} ${fx && fx.diff < 0 ? 'late' : ''}`} transform={`translate(${x} ${y})`} pointerEvents="none">
+    <g className={`life-flask ${dead ? 'dead' : ''}`} transform={`translate(${x} ${y})`} pointerEvents="none">
       {/* correntes */}
       <path d={`M${4.2 * S} -40 L${6.2 * S} ${4.6 * S}M${19.8 * S} -40 L${17.8 * S} ${4.6 * S}`} className="lf-chain" />
       <g key={fx?.key} className={`lf-body ${fx ? (fx.diff < 0 ? 'hit' : 'heal') : ''}`}>
@@ -99,10 +99,9 @@ export function LifeFlask({ hp, preview }: { hp: number; preview: number | null 
 /** Quanto da ampulheta já escorreu para um tempo total (curva suave, nunca enche de vez). */
 const sandOf = (t: number) => 1 - Math.exp(-t / 600)
 
-/** Tempo: ampulheta de madeira no canto superior direito. */
+/** Tempo: ampulheta de madeira no canto superior direito. Sem motion: só a areia e o valor mudam. */
 export function Hourglass({ time, preview }: { time: number; preview: number | null }) {
   const id = useId()
-  const fx = useChangeFx(time)
   const f = sandOf(time)
   const W = 120
   const x = MAP_W - W - 40
@@ -112,8 +111,8 @@ export function Hourglass({ time, preview }: { time: number; preview: number | n
   const topY = 82 - (1 - f) * 58
   const botY = 150 - f * 56
   return (
-    <g className={`hourglass ${fx && fx.diff > 0 ? 'late' : ''}`} transform={`translate(${x} ${y})`} pointerEvents="none">
-      <g key={fx?.key} className={`hg-body ${fx && fx.diff > 0 ? 'pour' : ''}`}>
+    <g className="hourglass" transform={`translate(${x} ${y})`} pointerEvents="none">
+      <g className="hg-body">
         <clipPath id={id}>
           <path d="M26 18 C26 58, 56 70, 56 85 C56 100, 26 112, 26 152 H94 C94 112, 64 100, 64 85 C64 70, 94 58, 94 18 Z" />
         </clipPath>
@@ -145,13 +144,6 @@ export function Hourglass({ time, preview }: { time: number; preview: number | n
         <Capsule x={W / 2} y={228} w={capWidth(formatTime(preview!).length + 2, 15)} h={26} tone={preview! > time ? 'run' : 'heal'}>
           <text y={1} textAnchor="middle" dominantBaseline="middle">→ {formatTime(preview!)}</text>
         </Capsule>
-      )}
-      {fx && fx.diff > 0 && (
-        <g key={'f' + fx.key} className="hg-float">
-          <Capsule x={-34} y={84} w={capWidth(formatTime(fx.diff).length + 1, 15)} h={26} tone="run">
-            <text y={1} textAnchor="middle" dominantBaseline="middle">+{formatTime(fx.diff)}</text>
-          </Capsule>
-        </g>
       )}
     </g>
   )

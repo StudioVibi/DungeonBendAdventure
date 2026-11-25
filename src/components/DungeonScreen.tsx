@@ -28,11 +28,13 @@ import {
   truncateAfter,
   type Plan,
   type Save,
+  type SimResult,
 } from '../game/plan'
 import { MapView, floorGeometry, type Ghost } from './MapView'
 import { SoundToggle } from './ui'
 import { HeroState, Hourglass, LifeFlask } from './Gauges'
 import { FxCanvas } from './TrailFx'
+import { drawDuration } from '../game/fx'
 import { Cap } from './Capsule'
 
 type DragTool = ToolId | 'stairs'
@@ -86,6 +88,23 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
   const FAR_HINT = 'Longe demais: só dá para conectar até a distância 5.'
   const dungeon = dungeonById(plan.dungeon)
   const sim = useMemo(() => simulate(plan), [plan])
+
+  // Mostradores (vida, tempo, estado do Alberto) só consolidam os valores da onda conectada
+  // quando a trilha termina de ser construída; enquanto isso, seguram os valores anteriores.
+  // A detecção é feita no render (comparando com o plano anterior) para o valor novo nunca aparecer antes da hora.
+  const [seenPlan, setSeenPlan] = useState(plan)
+  const [held, setHeld] = useState<{ sim: SimResult; ms: number; key: number } | null>(null)
+  if (plan !== seenPlan) {
+    setSeenPlan(plan)
+    const ms = buildMs(seenPlan, plan, floorIdx)
+    if (ms > 0) setHeld({ sim: held?.sim ?? simulate(seenPlan), ms, key: (held?.key ?? 0) + 1 })
+  }
+  useEffect(() => {
+    if (!held) return
+    const t = setTimeout(() => setHeld(null), held.ms)
+    return () => clearTimeout(t)
+  }, [held])
+  const gauge = held?.sim ?? sim
 
   const toSvg = useCallback((cx: number, cy: number): Pt | null => {
     const svg = svgRef.current
@@ -364,9 +383,9 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
             }}
             hud={
               <>
-                <LifeFlask hp={sim.hpEnd} preview={showPrev ? shown.hpEnd : null} />
-                <Hourglass time={sim.totalTime} preview={showPrev ? shown.totalTime : null} />
-                <HeroState x={START.x - 100} y={START.y + 80} sim={sim} shown={shown} preview={showPrev} empty={!totalSteps} />
+                <LifeFlask hp={gauge.hpEnd} preview={showPrev ? shown.hpEnd : null} />
+                <Hourglass time={gauge.totalTime} preview={showPrev ? shown.totalTime : null} />
+                <HeroState x={START.x - 100} y={START.y + 80} sim={gauge} shown={shown} preview={showPrev} empty={!gauge.floors.some((f) => f.steps.length)} />
               </>
             }
           />
@@ -429,6 +448,23 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
     </div>
   )
 })
+
+/** Quanto dura a construção das trilhas novas deste andar (0 se nenhuma trilha foi criada). */
+function buildMs(prev: Plan, next: Plan, floorIdx: number) {
+  if (prev.dungeon !== next.dungeon || !prev.floors[floorIdx] || !next.floors[floorIdx]) return 0
+  const keys = (pl: Plan) => {
+    const f = pl.floors[floorIdx]
+    const g = floorGeometry(pl, floorIdx)
+    const out = new Map<string, Pt[]>()
+    g.edges.forEach((e, i) => out.set(`${i === 0 ? 'start' : f.steps[i - 1].waveId}>${f.steps[i].waveId}`, e.samples))
+    if (f.stairs && g.stairsEdge) out.set(`${f.steps.at(-1)?.waveId ?? 'start'}>stairs@${f.stairs.x},${f.stairs.y}`, g.stairsEdge.samples)
+    return out
+  }
+  const before = keys(prev)
+  let ms = 0
+  for (const [k, samples] of keys(next)) if (!before.has(k)) ms = Math.max(ms, drawDuration(samples))
+  return ms
+}
 
 /** cores das divisórias (como as de um caderno) */
 const TAB_COLORS = ['#e0614f', '#f0b44f', '#7cc06a', '#5fa8d8', '#a57fd8']
