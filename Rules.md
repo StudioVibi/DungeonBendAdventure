@@ -28,6 +28,7 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 - Quanto maior a categoria da trilha, mais tempo ela soma à run.
 - A D1 não aceita recurso nem descanso.
 - A D2 tem um único encaixe, que aceita um recurso ou um descanso, nunca os dois.
+- O encaixe único mostra recurso e fogueira lado a lado; ao ser preenchido, fica só o tipo escolhido.
 - Da D3 em diante, recursos e descanso têm encaixes separados, e a capacidade de recursos cresce com a categoria.
 - O limite de um descanso por andar vale mesmo quando há encaixes de descanso livres em outras trilhas.
 
@@ -35,6 +36,7 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 
 - A mochila tem slots separados para poções e para armas.
 - Recursos (poções e armas) são colocados nos encaixes das trilhas.
+- Soltar um recurso numa trilha que passa por cima de uma onda só aloca o recurso; não cria trilha.
 - Cada slot da mochila pode ser usado uma vez por andar.
 - Subir de andar libera de novo todos os slots da mochila.
 - Itens consumidos numa run não voltam: o jogador repõe comprando na loja.
@@ -44,6 +46,7 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 ## Descanso
 
 - Só pode haver um descanso por andar.
+- O descanso só tem uma opção, a fogueira: clicar num encaixe de descanso já coloca a fogueira, se ela ainda for válida.
 - O tempo de um descanso depende de quanto o Alberto cura nele.
 
 ## Escada

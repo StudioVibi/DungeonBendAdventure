@@ -52,3 +52,4 @@ Decisões de implementação que **não vieram dos pedidos**: foram tomadas para
 - Aberta, a fila cobre o mundo em vez de empurrá-lo, para a cena não mudar de escala.
 - "Concluir run" fica no rodapé, ao lado de Desfazer e Limpar andar.
 - A cápsula tem tons fixos por tipo: vida, cura, ouro, tempo, distância, arma, em andamento, pronta, na fila, hospital, neutro, pergaminho e perigo.
+- O motion da vida e da ampulheta começa quando o traçado da trilha chega à onda, e não no clique.
