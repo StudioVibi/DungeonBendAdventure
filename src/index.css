@@ -326,19 +326,42 @@ h3, h4 { margin: .4em 0; }
 
 /* ================= menu diegético ================= */
 .menu { height: 100%; display: grid; grid-template-rows: auto 1fr; background: #5e9a42; }
-.menu-body { display: grid; grid-template-columns: 1fr 290px; min-height: 0; }
+.menu-body { display: grid; grid-template-columns: 1fr 92px; min-height: 0; }
+/* a fila fica fechada (só progresso + ícone); aberta, ela cobre o mundo sem redimensionar a cena */
+.qr-slot { position: relative; min-height: 0; }
 /* o mundo fica ancorado embaixo: a sobra vira céu (a cena começa nesse mesmo azul) */
 .world-wrap { background: #7fb7e6; }
 
 /* fila: barra lateral fixa, sempre visível */
 .queue-rail {
-  position: relative; z-index: 4; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto;
+  position: absolute; top: 0; right: 0; bottom: 0; width: 92px; z-index: 6; display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow-y: auto;
   padding: 16px 14px 18px; color: #f3e3bf;
   background:
     repeating-linear-gradient(90deg, rgba(0, 0, 0, .06) 0 2px, transparent 2px 38px),
     linear-gradient(180deg, #4a2f1c, #3a2416 60%, #2e1c11);
   border-left: 4px solid #2a180c; box-shadow: inset 3px 0 0 #6b4423, -8px 0 24px rgba(0, 0, 0, .25);
 }
+.queue-rail.open { width: 300px; animation: rail-open .22s cubic-bezier(.2, .8, .3, 1); }
+@keyframes rail-open { from { width: 92px; } }
+.queue-rail.mini { font: inherit; color: inherit; cursor: pointer; align-items: center; padding: 14px 8px; gap: 14px; border-top: none; border-right: none; border-bottom: none; }
+.queue-rail.mini:hover { filter: brightness(1.12); }
+.queue-rail.mini .qr-title { font-size: 24px; }
+.qm-item { display: flex; align-items: stretch; gap: 6px; }
+.qm-bar { position: relative; width: 6px; border-radius: 3px; background: rgba(0, 0, 0, .4); box-shadow: inset 0 0 0 1px rgba(243, 227, 191, .15); overflow: hidden; }
+.qm-bar > span { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #d9922e, #f0c04a); transition: height 1s linear; }
+.qm-icon {
+  position: relative; display: grid; place-items: center; width: 58px; height: 52px; border-radius: 6px;
+  background: linear-gradient(170deg, #fbf3df, #ecdcb6); box-shadow: 0 3px 0 #8a5a2c, 0 6px 10px rgba(0, 0, 0, .35), inset 0 -4px 0 var(--acc);
+}
+.qm-icon img { width: 50px; height: 42px; object-fit: contain; }
+.qm-item.st-queued .qm-icon { filter: saturate(.5) brightness(.85); }
+.qm-item.st-running .qm-icon { box-shadow: 0 3px 0 #8a5a2c, 0 0 0 2px #f0c04a, 0 6px 12px rgba(240, 192, 74, .35), inset 0 -4px 0 var(--acc); }
+.qm-item.st-done .qm-icon { box-shadow: 0 3px 0 #8a5a2c, 0 0 0 2px #fff0b0, 0 0 16px rgba(255, 220, 120, .8), inset 0 -4px 0 var(--acc); animation: bob 1.4s ease-in-out infinite; }
+.qm-badge { position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 900; background: #f0c04a; color: #2a1606; box-shadow: 0 2px 4px rgba(0, 0, 0, .4); }
+.qm-hosp { color: #ff8a80; font-weight: 900; font-size: 18px; }
+.qm-empty { font-size: 12px; color: #c9a77a; }
+.qm-open { margin-top: auto; font-size: 26px; color: #c9a77a; line-height: 1; }
+.qr-close { font-size: 12px; color: #c9a77a; }
 .qr-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px dashed rgba(243, 227, 191, .25); padding-bottom: 8px; }
 .qr-title { font-family: 'Jaro', sans-serif; font-size: 30px; color: #f3d9a6; line-height: 1; }
 .qr-sub { font-size: 12px; color: #c9a77a; }

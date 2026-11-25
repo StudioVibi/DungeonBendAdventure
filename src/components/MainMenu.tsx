@@ -386,11 +386,42 @@ function TopBar(p: Props) {
 function QueueRail(p: Props) {
   const { save, now } = p
   const hospital = p.hospitalUntil > now
+  const [open, setOpen] = useState(false)
+  if (!open)
+    return (
+      <div className="qr-slot">
+        <button className="queue-rail mini" data-sfx="none" onClick={() => setOpen(true)} title="Abrir a fila">
+          <span className="qr-title">Fila</span>
+          {hospital && <span className="qm-hosp" title="No hospital">✚</span>}
+          {save.runs.map((r) => {
+            const st = runStatus(r, now)
+            const d = DUNGEONS.find((x) => x.id === r.dungeon)!
+            const pct = st === 'running' ? Math.min(1, (now - r.startAt) / (r.endAt - r.startAt)) : st === 'done' ? 1 : 0
+            return (
+              <span key={r.id} className={`qm-item st-${st}`} title={d.name}>
+                {/* progresso à esquerda do ícone */}
+                <span className="qm-bar">
+                  <span style={{ height: `${pct * 100}%` }} />
+                </span>
+                <span className="qm-icon" style={{ '--acc': d.accent } as CSSProperties}>
+                  <img src={`/assets/generated/overworld/${d.id}.svg`} alt="" />
+                  {st === 'done' && <span className="qm-badge">{r.result.alive ? '✓' : '☠'}</span>}
+                </span>
+              </span>
+            )
+          })}
+          {save.runs.length === 0 && <span className="qm-empty">vazia</span>}
+          <span className="qm-open">›</span>
+        </button>
+      </div>
+    )
   return (
-    <aside className="queue-rail">
+    <div className="qr-slot">
+    <aside className="queue-rail open">
       <div className="qr-head">
         <span className="qr-title">Fila</span>
         <span className="qr-sub">uma run de cada vez</span>
+        <button className="link-btn qr-close" data-sfx="back" onClick={() => setOpen(false)} title="Fechar a fila">‹ fechar</button>
       </div>
       {hospital && (
         <div className="qr-hospital">
@@ -448,5 +479,6 @@ function QueueRail(p: Props) {
         </ol>
       )}
     </aside>
+    </div>
   )
 }

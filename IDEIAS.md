@@ -49,6 +49,6 @@ Decisões de implementação que **não vieram dos pedidos**: foram tomadas para
 - Um rascunho salvo com uma onda fora de alcance (por mudança no mapa) é cortado nessa onda.
 - A ampulheta enche numa curva que nunca completa, porque o tempo da run não tem teto.
 - O motion do mostrador de vida vem da diferença da vida final confirmada: desfazer uma trilha também mostra regeneração.
-- A situação fica no centro do rodapé, e não sobre o mapa, para não cobrir ondas.
+- Aberta, a fila cobre o mundo em vez de empurrá-lo, para a cena não mudar de escala.
 - "Concluir run" fica no rodapé, ao lado de Desfazer e Limpar andar.
 - A cápsula tem tons fixos por tipo: vida, cura, ouro, tempo, distância, arma, em andamento, pronta, na fila, hospital, neutro, pergaminho e perigo.

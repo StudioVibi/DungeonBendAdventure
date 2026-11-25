@@ -66,6 +66,7 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 - Uma dungeon com run em andamento não pode ser aberta até a run terminar.
 - O jogador pode criar uma fila para que runs de outras dungeons comecem em sequência.
 - A fila fica sempre visível, numa barra lateral dedicada do menu.
+- Fechada, a barra da fila mostra só o progresso e o ícone de cada run; ela se expande ao clicar.
 - Um herói que morre fica hospitalizado por um tempo antes de poder fazer outra run.
 - Durante o playtest, existem atalhos para terminar a run em andamento e para dar alta do hospital.
 
@@ -74,8 +75,8 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 - O topo da tela é para navegação e ajustes, não para HUD.
 - A vida do Alberto aparece num mostrador diegético no canto superior esquerdo do fundo, e o tempo numa ampulheta diegética no canto superior direito.
 - Cada trilha construída faz o mostrador de vida sofrer o dano da onda escolhida; recursos de cura nas trilhas fazem ele regenerar.
-- A tela da dungeon não mostra o ouro total da conta, só o ouro acumulado na run, embaixo do Alberto.
-- A situação aparece só como texto, sem título nem cápsula.
+- A tela da dungeon não mostra o ouro total da conta; o ouro aparece só na etiqueta de cada onda.
+- O estado do Alberto (a situação) aparece embaixo dele, só como texto, sem título nem cápsula.
 - A etiqueta de cada onda mostra a vida que ela tira e o ouro que ela dá.
 
 ## Visual
