@@ -121,9 +121,7 @@ h3, h4 { margin: .4em 0; }
 .wave-halo { fill: rgba(0, 0, 0, .28); stroke: rgba(255, 255, 255, .0); stroke-width: 3; transition: fill .15s, stroke .15s; }
 .wave.hovered .wave-halo { fill: rgba(255, 214, 120, .22); stroke: rgba(255, 214, 120, .9); stroke-dasharray: 6 6; }
 .wave.in-path .wave-halo { fill: rgba(255, 214, 120, .16); stroke: rgba(246, 227, 180, .7); }
-.cost-pill { fill: rgba(40, 10, 12, .88); stroke: #b8383e; stroke-width: 2; }
-.cost-text { fill: #ffb3b3; font-weight: 800; font-size: 14px; }
-.cost-text.struck { fill: #998; text-decoration: line-through; font-size: 12px; }
+.cap-svg .cap-ink text.cost-struck { fill: #d9a0a0; font-size: 13px; text-decoration: line-through; font-weight: 700; }
 .order-dot { fill: #f6e3b4; stroke: #3a2614; stroke-width: 2.5; }
 .order-text { fill: #3a2614; font-weight: 900; font-size: 14px; }
 .heart-text { font-weight: 900; paint-order: stroke; stroke: #2a1010; stroke-width: 3px; }
@@ -135,8 +133,6 @@ h3, h4 { margin: .4em 0; }
 .item-disc { fill: #2a2016; stroke: #f6e3b4; stroke-width: 3; }
 .path-item:hover .item-disc { stroke: var(--bad); }
 .heal-text { fill: var(--heal); font-weight: 900; font-size: 15px; paint-order: stroke; stroke: #0b1a0b; stroke-width: 4px; }
-.weapon-pill { fill: #262a36; stroke: #9fb2d8; stroke-width: 2; }
-.weapon-text { fill: #dfe8ff; font-weight: 800; font-size: 13px; }
 
 .stairs-node { cursor: pointer; }
 .stairs-disc { fill: rgba(30, 22, 16, .8); stroke: var(--gold); stroke-width: 3; }
@@ -167,7 +163,7 @@ h3, h4 { margin: .4em 0; }
 .slot-val.heal { color: var(--heal); }
 .slot-val.dmg { color: #c8d4f0; }
 .slot-stock { position: absolute; bottom: 2px; right: 5px; font-size: 12px; font-weight: 800; color: var(--text); }
-.slot-flag { position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 800; background: #000a; padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
+.slot-flag { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); }
 .bag-help { flex: 1; font-size: 12px; color: var(--muted); align-self: center; text-align: center; }
 .bag-actions { display: flex; gap: 8px; align-self: center; }
 .drag-ghost { position: fixed; width: 64px; height: 72px; object-fit: contain; pointer-events: none; transform: translate(-50%, -60%) rotate(-8deg); filter: drop-shadow(0 6px 10px #000c); z-index: 50; }
@@ -217,8 +213,7 @@ h3, h4 { margin: .4em 0; }
 .mini-lvl { font-size: 11px; }
 .mini-n { position: absolute; top: 4px; right: 6px; font-weight: 900; }
 .report-items { display: flex; flex-wrap: wrap; gap: 10px; }
-.ri { display: inline-flex; align-items: center; gap: 4px; background: #1a141c; padding: 4px 10px; border-radius: 8px; }
-.ri img { width: 24px; height: 28px; object-fit: contain; }
+.ri img { width: 22px; height: 24px; object-fit: contain; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
 .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: #2a1316; border: 2px solid var(--bad); padding: 10px 18px; border-radius: 10px; font-weight: 700; z-index: 60; animation: pop .2s; }
@@ -256,11 +251,10 @@ h3, h4 { margin: .4em 0; }
 @keyframes trail-fade { to { opacity: 1; } }
 
 /* pathing: distância e encaixes */
-.dist-badge rect { fill: rgba(22, 16, 12, .88); stroke: #f6e3b4; stroke-width: 2; }
-.dist-d { fill: #f6e3b4; font-weight: 900; font-size: 13px; }
-.dist-s { fill: #cbbd9f; font-weight: 700; font-size: 11px; }
-.dist-badge.d1 rect { stroke: #9c9184; }
-.dist-badge.d5 rect { stroke: var(--accent); }
+.cap-svg.cap-lg .cap-ink text { font-size: 17px; }
+.cap-svg .cap-ink text.dist-d { font-size: 16px; }
+.cap-svg .cap-ink text.dist-s { font-size: 13px; font-weight: 700; opacity: .8; }
+.dist-badge.d5 .cap-rim { fill: var(--accent); }
 .socket circle { fill: rgba(20, 14, 10, .55); stroke: rgba(246, 227, 180, .7); stroke-width: 2.5; stroke-dasharray: 5 4; }
 .socket-plus { stroke: rgba(246, 227, 180, .8); stroke-width: 3; stroke-linecap: round; }
 .socket.open circle { stroke: var(--gold); fill: rgba(255, 210, 90, .25); stroke-dasharray: none; }
@@ -464,10 +458,7 @@ h3, h4 { margin: .4em 0; }
 }
 .shelf-item:hover:not(:disabled) .si-art { transform: translateY(-6px); filter: drop-shadow(0 10px 8px rgba(0, 0, 0, .45)) brightness(1.08); }
 .shelf-item:active:not(:disabled) .si-art { transform: translateY(-2px); }
-.si-owned {
-  position: absolute; top: 8px; right: 10px; font-size: 12px; font-weight: 800; color: #3a2010; background: #f3d9a6;
-  padding: 2px 7px; border-radius: 999px; box-shadow: 0 2px 4px rgba(0, 0, 0, .3); z-index: 2;
-}
+.si-owned { position: absolute; top: 8px; right: 6px; z-index: 2; }
 /* etiqueta de papel pendurada na borda da tábua */
 .price-tag {
   position: absolute; top: calc(100% + 26px); left: 50%; transform: translateX(-50%) rotate(-3deg); transform-origin: 50% -18px;
@@ -555,3 +546,52 @@ h3, h4 { margin: .4em 0; }
 .tb-storage-head { display: flex; align-items: center; gap: 8px; }
 .tb-storage-head img { width: 40px; height: 35px; }
 .tb-storage .tb-owned { min-height: 0; justify-content: center; }
+
+/* ================= cápsula do DBA =================
+   Um shape só (placa chanfrada com aro, face, brilho, linha gravada e rebites); o tom muda com a informação. */
+.t-hp { --cap-dark: #250709; --cap-rim: #d0575c; --cap-face: #7a1c22; --cap-ink: #ffe1e1; --cap-line: #ff9da1; }
+.t-heal { --cap-dark: #07200b; --cap-rim: #6fcf6a; --cap-face: #1e5a24; --cap-ink: #e6ffe2; --cap-line: #a6f0a0; }
+.t-gold { --cap-dark: #2a1704; --cap-rim: #f0c04a; --cap-face: #7a4c10; --cap-ink: #ffeaa8; --cap-line: #ffd97a; }
+.t-time { --cap-dark: #1c1408; --cap-rim: #c9a46a; --cap-face: #4a3620; --cap-ink: #f6e3b4; --cap-line: #e8cf9a; }
+.t-dist { --cap-dark: #120d09; --cap-rim: #a89377; --cap-face: #2e241b; --cap-ink: #f6e3b4; --cap-line: #cdb994; }
+.t-weapon { --cap-dark: #0c1018; --cap-rim: #9fb2d8; --cap-face: #2a3346; --cap-ink: #e6eeff; --cap-line: #c6d4f2; }
+.t-run { --cap-dark: #1a1006; --cap-rim: #e8a94a; --cap-face: #3a2a18; --cap-ink: #ffe7b8; --cap-line: #f6c97a; }
+.t-done { --cap-dark: #4a2a04; --cap-rim: #fff0b0; --cap-face: #d99a22; --cap-ink: #2a1606; --cap-line: #ffe28a; }
+.t-queue { --cap-dark: #10121a; --cap-rim: #8c93a8; --cap-face: #2c3040; --cap-ink: #e2e6f2; --cap-line: #b4bbd0; }
+.t-hospital { --cap-dark: #5a1418; --cap-rim: #ffffff; --cap-face: #f7e8e6; --cap-ink: #a3242b; --cap-line: #e7b4b4; }
+.t-neutral { --cap-dark: #120d10; --cap-rim: #6b5a6c; --cap-face: #2b2230; --cap-ink: #f1e8dc; --cap-line: #8f7d90; }
+.t-parchment { --cap-dark: #5a3a1c; --cap-rim: #c9a46a; --cap-face: #f3e3bf; --cap-ink: #5a3a1c; --cap-line: #b8935e; }
+.t-bad { --cap-dark: #200606; --cap-rim: #ff6b6b; --cap-face: #5a1418; --cap-ink: #ffd0d0; --cap-line: #ff9a9a; }
+
+.cap-svg .cap-shadow { fill: rgba(0, 0, 0, .45); }
+.cap-svg .cap-dark { fill: var(--cap-dark); }
+.cap-svg .cap-rim { fill: var(--cap-rim); }
+.cap-svg .cap-face { fill: var(--cap-face); }
+.cap-svg .cap-sheen { fill: #fff; opacity: .16; }
+.cap-svg .cap-line { fill: none; stroke: var(--cap-line); stroke-width: 1; opacity: .45; }
+.cap-svg .cap-stud { fill: var(--cap-rim); stroke: var(--cap-dark); stroke-width: .8; }
+.cap-svg .cap-ink text, .cap-svg text.cap-ink { fill: var(--cap-ink); font-weight: 900; font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.cap { display: inline-flex; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .45)); vertical-align: middle; line-height: 1; }
+.cap-in {
+  --c: 8px;
+  position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 5px;
+  min-height: 24px; padding: 3px 16px; font-weight: 900; font-size: 13px; color: var(--cap-ink); white-space: nowrap;
+  font-variant-numeric: tabular-nums; background: var(--cap-dark);
+  clip-path: polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% 50%, calc(100% - var(--c)) 100%, var(--c) 100%, 0 50%);
+}
+.cap-in::before, .cap-in::after {
+  content: ''; position: absolute; z-index: -1;
+  clip-path: polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% 50%, calc(100% - var(--c)) 100%, var(--c) 100%, 0 50%);
+}
+.cap-in::before { inset: 1.5px; background: var(--cap-rim); }
+.cap-in::after {
+  inset: 3px;
+  background:
+    radial-gradient(circle at 5px 50%, var(--cap-rim) 1.6px, transparent 2.2px),
+    radial-gradient(circle at calc(100% - 5px) 50%, var(--cap-rim) 1.6px, transparent 2.2px),
+    linear-gradient(180deg, rgba(255, 255, 255, .18) 0 44%, transparent 44% 100%),
+    var(--cap-face);
+}
+.cap.big .cap-in { --c: 11px; min-height: 34px; padding: 4px 22px; font-size: 16px; gap: 8px; }
+.cap.small .cap-in { --c: 6px; min-height: 18px; padding: 2px 11px; font-size: 11px; }

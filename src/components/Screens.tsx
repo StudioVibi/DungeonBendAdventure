@@ -11,6 +11,7 @@ import {
 } from '../game/data'
 import { formatTime, mergeCards, type Save, type SimResult } from '../game/plan'
 import { Gold, HeartIcon } from './ui'
+import { Cap } from './Capsule'
 
 // ---------------- Loja ----------------
 
@@ -75,7 +76,7 @@ export function ShopScreen(p: {
         disabled={!afford}
         title={afford ? `Comprar ${it.name}` : `${it.name} — ouro insuficiente`}
       >
-        {save.stock[id] > 0 && <span className="si-owned">×{save.stock[id]}</span>}
+        {save.stock[id] > 0 && <Cap tone="parchment" className="small si-owned">×{save.stock[id]}</Cap>}
         <img className="si-art" src={it.icon} alt={it.name} draggable={false} />
         <span className="price-tag">
           <span className="tag-name">{it.name}</span>
@@ -281,7 +282,7 @@ export function ReportModal(p: {
             <h4>{preview ? 'Itens que serão consumidos' : 'Itens consumidos'}</h4>
             <div className="report-items">
               {potions.map(([id, n]) => (
-                <span key={id} className="ri"><img className="item-art" src={ITEMS[id].icon} alt="" /> {ITEMS[id].name} ×{n}</span>
+                <Cap key={id} tone="neutral" className="ri"><img className="item-art" src={ITEMS[id].icon} alt="" /> {ITEMS[id].name} ×{n}</Cap>
               ))}
             </div>
           </>

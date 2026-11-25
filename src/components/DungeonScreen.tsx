@@ -33,6 +33,7 @@ import {
 } from '../game/plan'
 import { MapView, floorGeometry, type Ghost } from './MapView'
 import { Gold, HeartIcon, SoundToggle } from './ui'
+import { Cap } from './Capsule'
 
 type DragTool = ToolId | 'stairs'
 
@@ -490,7 +491,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
       >
         <img className="item-art" src={it.icon} alt="" draggable={false} />
         <span className={`slot-val ${isPotion(tool) ? 'heal' : 'dmg'}`}>{isPotion(tool) ? `+${it.value}` : `${it.value}`}</span>
-        {usedHere && <span className="slot-flag">usado</span>}
+        {usedHere && <Cap tone="neutral" className="small slot-flag">usado</Cap>}
       </div>
     )
   }
@@ -515,7 +516,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
           >
             <img src={CAMPFIRE_ICON} alt="" draggable={false} />
             <span className="slot-val heal">cheia</span>
-            {camp.left <= 0 && <span className="slot-flag">usada</span>}
+            {camp.left <= 0 && <Cap tone="neutral" className="small slot-flag">usada</Cap>}
           </div>
           <div
             className={`slot ${p.stairsUsed ? 'used' : ''}`}
@@ -524,7 +525,7 @@ function Bag(p: Props & { onStart: (t: DragTool) => (e: RPointerEvent) => void; 
           >
             <img src={STAIRS_ICON} alt="" draggable={false} />
             <span className="slot-val">subir</span>
-            {p.stairsUsed && <span className="slot-flag">colocada</span>}
+            {p.stairsUsed && <Cap tone="neutral" className="small slot-flag">colocada</Cap>}
           </div>
         </div>
       </div>

@@ -2,11 +2,12 @@ import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, typ
 import { drawDuration, makeBurst, type Burst } from '../game/fx'
 import { TrailFx } from './TrailFx'
 import { construction } from '../game/audio'
-import { CAMPFIRE_ICON, HERO, ITEM_ART_OFFSET, ITEM_ART_RATIO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
+import { CAMPFIRE_ICON, GOLD_ICON, HERO, ITEM_ART_OFFSET, ITEM_ART_RATIO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
 import { clusterLayout, edgeGeom, ICON_R, type EdgeGeom, type Pt } from '../game/geometry'
 import { floorMap, MAP_H, MAP_W, START, type Wave } from '../game/mapgen'
-import { waveById, waveHp, type Plan, type SimResult } from '../game/plan'
+import { waveById, waveGold, waveHp, type Plan, type SimResult } from '../game/plan'
 import { HeartBadge, MonsterHead, useFrame } from './ui'
+import { Capsule, capWidth } from './Capsule'
 
 /** Sprite animado separado para não re-renderizar o mapa inteiro a cada frame. */
 function HeroSprite({ x, y }: { x: number; y: number }) {
@@ -135,9 +136,37 @@ function DistanceBadge({ e, cls, ghost }: { e: EdgeGeom; cls: TrailClass; ghost?
   const pt = e.at(e.t0 + (e.t1 - e.t0) * 0.15)
   return (
     <g transform={`translate(${pt.x} ${pt.y})`} className={`dist-badge d${cls.d}`} opacity={ghost ? 0.85 : 1} pointerEvents="none">
-      <rect x={-30} y={-12} width={60} height={24} rx={12} />
-      <text x={-14} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-d">D{cls.d}</text>
-      <text x={13} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-s">{cls.seconds}s</text>
+      <Capsule w={86} h={28} tone="dist" className="cap-lg">
+        <text x={-15} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-d">D{cls.d}</text>
+        <text x={17} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-s">{cls.seconds}s</text>
+      </Capsule>
+    </g>
+  )
+}
+
+/** Etiquetas da onda: dano que ela causa (−N ♥) e ouro que ela dá (+N). */
+function WaveCost({ x, y, hp, struck, gold, dim }: { x: number; y: number; hp: number; struck: number | null; gold: number; dim?: boolean }) {
+  const hpTxt = `−${hp} ♥`
+  const wHp = capWidth(hpTxt.length + (struck !== null ? String(struck).length + 1 : 0), 17)
+  const wGold = capWidth(String(gold).length + 1, 17, 20)
+  const gap = 5
+  const x0 = -(wHp + gap + wGold) / 2
+  return (
+    <g transform={`translate(${x} ${y})`} opacity={dim ? 0.5 : 1} pointerEvents="none">
+      <Capsule x={x0 + wHp / 2} w={wHp} h={30} tone="hp" className="cap-lg">
+        {struck !== null ? (
+          <>
+            <text x={-wHp / 2 + 16} y={1} dominantBaseline="middle" className="cost-struck">{struck}</text>
+            <text x={wHp / 2 - 16} y={1} textAnchor="end" dominantBaseline="middle">{hpTxt}</text>
+          </>
+        ) : (
+          <text y={1} textAnchor="middle" dominantBaseline="middle">{hpTxt}</text>
+        )}
+      </Capsule>
+      <Capsule x={x0 + wHp + gap + wGold / 2} w={wGold} h={30} tone="gold" className="cap-lg">
+        <image href={GOLD_ICON} x={-wGold / 2 + 14} y={-11} width={20} height={23} />
+        <text x={9} y={1} textAnchor="middle" dominantBaseline="middle">+{gold}</text>
+      </Capsule>
     </g>
   )
 }
@@ -266,18 +295,8 @@ export function MapView(p: Props) {
             {pts.map((pt, i) => (
               <MonsterHead key={i} monster={w.monsters[i]} cx={pt.x} cy={pt.y} r={total >= 5 ? ICON_R - 1 : ICON_R} dim={greyed} />
             ))}
-            {/* custo da onda */}
-            <g transform={`translate(${w.x} ${w.y + radius + 16})`} pointerEvents="none">
-              <rect x={-30} y={-12} width={60} height={24} rx={12} className="cost-pill" />
-              {label !== null ? (
-                <>
-                  <text x={-10} y={1} className="cost-text struck" textAnchor="middle" dominantBaseline="middle">{r!.waveHp}</text>
-                  <text x={14} y={1} className="cost-text" textAnchor="middle" dominantBaseline="middle">−{label}</text>
-                </>
-              ) : (
-                <text x={0} y={1} className="cost-text" textAnchor="middle" dominantBaseline="middle">−{waveHp(w)} ♥</text>
-              )}
-            </g>
+            {/* custo da onda: vida (♥) e ouro que ela dá */}
+            <WaveCost x={w.x} y={w.y + radius + 20} hp={label !== null ? label : waveHp(w)} struck={label !== null ? r!.waveHp : null} gold={waveGold(w)} dim={greyed} />
             {inPath && (
               <g transform={`translate(${w.x - radius * 0.78} ${w.y - radius * 0.78})`} pointerEvents="none" opacity={isGhost ? 0.6 : 1}>
                 <circle r={13} className="order-dot" />
@@ -374,8 +393,9 @@ export function MapView(p: Props) {
                   )}
                   {isWeapon(tool) ? (
                     <g transform="translate(0 34)">
-                      <rect x={-20} y={-10} width={40} height={20} rx={10} className="weapon-pill" />
-                      <text y={1} textAnchor="middle" dominantBaseline="middle" className="weapon-text">{ITEMS[tool].value}</text>
+                      <Capsule w={50} h={26} tone="weapon" className="cap-lg">
+                        <text y={1} textAnchor="middle" dominantBaseline="middle">{ITEMS[tool].value}</text>
+                      </Capsule>
                     </g>
                   ) : (
                     res && (
