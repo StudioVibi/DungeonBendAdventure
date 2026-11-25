@@ -38,6 +38,11 @@ const WAVES_PER_FLOOR = 9
 /** Orçamentos de HP (em nível 1) para as ondas de cada andar: mistura de fáceis e difíceis. */
 const BUDGETS = [4, 6, 8, 10, 12, 14, 17, 20, 26]
 const MAX_MONSTERS = 7
+/** áreas do fundo reservadas para os mostradores diegéticos (vida e ampulheta) */
+export const HUD_ZONES = [
+  { x0: 0, x1: 390, y1: 270 },
+  { x0: 1280, x1: MAP_W, y1: 330 },
+]
 
 const cache = new Map<string, FloorMap>()
 
@@ -59,6 +64,8 @@ export function floorMap(dungeon: DungeonId, floor: number): FloorMap {
     }
     const p = { x: 260 + rand() * (MAP_W - 400), y: 110 + rand() * (MAP_H - 230) }
     if (Math.hypot(p.x - START.x, p.y - START.y) < 260) continue
+    // cantos de cima ficam livres para a vida (esquerda) e a ampulheta (direita)
+    if (HUD_ZONES.some((z) => p.x > z.x0 && p.x < z.x1 && p.y < z.y1)) continue
     if (pts.some((q) => Math.hypot(p.x - q.x, p.y - q.y) < minDist)) continue
     pts.push(p)
   }

@@ -230,7 +230,13 @@ export function sanitizePlan(plan: Plan, save: Save): { plan: Plan; removed: num
     const nf: FloorPlan = { steps: [], stairs: f.stairs }
     out.floors.push(nf)
     const fi = out.floors.length - 1
+    let cut = false
     for (const s of f.steps) {
+      // o mapa pode ter mudado de versão: uma onda fora de alcance encerra o andar
+      if (!reachable(edgeFrom(out, fi, nf.steps.length), waveById(out, fi, s.waveId) ?? { x: Infinity, y: Infinity })) {
+        cut = true
+        break
+      }
       const ns: Step = { waveId: s.waveId, items: [] }
       nf.steps.push(ns)
       for (const t of s.items) {
@@ -239,6 +245,10 @@ export function sanitizePlan(plan: Plan, save: Save): { plan: Plan; removed: num
       }
     }
     nf.stairsItems = []
+    if (cut || (nf.stairs && !reachable(edgeFrom(out, fi, nf.steps.length), nf.stairs))) {
+      nf.stairs = null
+      break
+    }
     for (const t of f.stairsItems ?? []) {
       if (availability(save, out, fi, t).left > 0) nf.stairsItems.push(t)
       else removed++
