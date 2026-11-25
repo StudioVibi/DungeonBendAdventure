@@ -48,9 +48,10 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 
 ## Escada
 
-- Colocar a escada cria uma nova aba de andar, com novos grupos de monstros.
+- Colocar a escada cria um novo andar, com novos grupos de monstros.
 - Construir a escada não leva o jogador ao próximo andar: ele sobe clicando na escada ou na aba criada.
 - A trilha até a escada aceita recursos e descanso, como as outras trilhas.
+- Cada andar aparece como uma aba lateral do mapa, como as divisórias de um caderno.
 - Só a aba do último andar criado tem o botão ×, e fechar essa aba remove o andar.
 
 ## Tempo da run
@@ -64,8 +65,22 @@ Regras de comportamento do jogo. Os valores numéricos ficam em `TUNING.md`. As 
 - O lugar da dungeon no menu mostra o timer da trilha em andamento.
 - Uma dungeon com run em andamento não pode ser aberta até a run terminar.
 - O jogador pode criar uma fila para que runs de outras dungeons comecem em sequência.
+- A fila fica sempre visível, numa barra lateral dedicada do menu.
 - Um herói que morre fica hospitalizado por um tempo antes de poder fazer outra run.
 - Durante o playtest, existem atalhos para terminar a run em andamento e para dar alta do hospital.
+
+## Tela da dungeon
+
+- O topo da tela é para navegação e ajustes, não para HUD.
+- A vida do Alberto aparece num mostrador diegético no canto superior esquerdo do fundo, e o tempo numa ampulheta diegética no canto superior direito.
+- Cada trilha construída faz o mostrador de vida sofrer o dano da onda escolhida; recursos de cura nas trilhas fazem ele regenerar.
+- A tela da dungeon não mostra o ouro total da conta, só o ouro acumulado na run, embaixo do Alberto.
+- A situação aparece só como texto, sem título nem cápsula.
+- A etiqueta de cada onda mostra a vida que ela tira e o ouro que ela dá.
+
+## Visual
+
+- Informações pequenas usam a cápsula do DBA: um shape único e detalhado, com a cor mudando conforme a informação. Não existem cápsulas cilíndricas.
 
 ## Recompensas e coleção
 
