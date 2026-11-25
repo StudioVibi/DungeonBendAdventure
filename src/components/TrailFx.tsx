@@ -1,49 +1,98 @@
-import { useEffect, useState } from 'react'
-import { particleAt, type Burst } from '../game/fx'
+import { useEffect, useRef } from 'react'
+import { particleAt, type Burst, type Particle } from '../game/fx'
+import { MAP_W } from '../game/mapgen'
 
-/** Partículas da construção de trilha (renderizadas dentro do <svg> do mapa). */
-export function TrailFx({ bursts, onDone }: { bursts: Burst[]; onDone: (id: number) => void }) {
-  const [now, setNow] = useState(() => performance.now())
+/**
+ * Partículas da construção de trilha num <canvas> por cima do mapa.
+ * Fica fora do React e fora do <svg>: animar dentro do SVG fazia o navegador repintar o mapa inteiro a cada frame
+ * (pesado no Safari), e o setState por frame re-renderizava a cena.
+ */
+const live: Burst[] = []
+let wake: (() => void) | null = null
 
-  useEffect(() => {
-    if (!bursts.length) return
-    let raf = 0
-    const tick = (t: number) => {
-      setNow(t)
-      for (const b of bursts) if (t - b.start > b.total) onDone(b.id)
-      raf = requestAnimationFrame(tick)
+export function spawnBurst(b: Burst) {
+  live.push(b)
+  wake?.()
+}
+
+const shapes = new WeakMap<Particle, Path2D>()
+function shapeOf(p: Particle) {
+  let s = shapes.get(p)
+  if (!s) {
+    if (p.kind === 'pebble') {
+      const pts = (p.shape ?? '').trim().split(/\s+/).map((xy) => xy.split(',').map(Number))
+      s = new Path2D()
+      pts.forEach(([x, y], i) => (i ? s!.lineTo(x, y) : s!.moveTo(x, y)))
+      s.closePath()
+    } else if (p.kind === 'grass') {
+      const h = p.size
+      const w = h * 0.34
+      s = new Path2D(`M0 0C${w} ${-h * 0.45} ${w * 0.5} ${-h} 0 ${-h}C${-w * 0.5} ${-h} ${-w} ${-h * 0.45} 0 0Z`)
+    } else {
+      s = new Path2D()
+      s.arc(0, 0, p.size, 0, Math.PI * 2)
     }
-    raf = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(raf)
-  }, [bursts, onDone])
+    shapes.set(p, s)
+  }
+  return s
+}
 
-  if (!bursts.length) return null
-  return (
-    <g className="trail-fx" pointerEvents="none">
-      {bursts.map((b) =>
-        b.particles.map((p, i) => {
-          const s = particleAt(p, now - b.start)
-          if (!s) return null
-          const tr = `translate(${s.x.toFixed(1)} ${s.y.toFixed(1)}) rotate(${s.rot.toFixed(0)}) scale(${s.scale.toFixed(2)})`
-          if (p.kind === 'dust') return <circle key={b.id + ':' + i} transform={tr} r={p.size} fill={p.color} opacity={s.opacity} />
-          if (p.kind === 'clod') return <circle key={b.id + ':' + i} transform={tr} r={p.size} fill={p.color} opacity={s.opacity} />
-          if (p.kind === 'pebble')
-            return <polygon key={b.id + ':' + i} transform={tr} points={p.shape} fill={p.color} stroke="#2a292e" strokeWidth={1.2} opacity={s.opacity} />
-          const h = p.size
-          const w = h * 0.34
-          return (
-            <path
-              key={b.id + ':' + i}
-              transform={tr}
-              d={`M0 0C${w} ${-h * 0.45} ${w * 0.5} ${-h} 0 ${-h}C${-w * 0.5} ${-h} ${-w} ${-h * 0.45} 0 0Z`}
-              fill={p.color}
-              stroke="#1f4a1a"
-              strokeWidth={1.2}
-              opacity={s.opacity}
-            />
-          )
-        }),
-      )}
-    </g>
-  )
+export function FxCanvas() {
+  const ref = useRef<HTMLCanvasElement | null>(null)
+  useEffect(() => {
+    const cv = ref.current!
+    const ctx = cv.getContext('2d')!
+    let raf = 0
+    let running = false
+    const frame = (t: number) => {
+      const w = cv.clientWidth
+      const h = cv.clientHeight
+      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) {
+        cv.width = Math.round(w * dpr)
+        cv.height = Math.round(h * dpr)
+      }
+      const k = (w / MAP_W) * dpr
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, cv.width, cv.height)
+      for (let i = live.length - 1; i >= 0; i--) if (t - live[i].start > live[i].total) live.splice(i, 1)
+      for (const b of live) {
+        for (const p of b.particles) {
+          const s = particleAt(p, t - b.start)
+          if (!s) continue
+          ctx.setTransform(k, 0, 0, k, 0, 0)
+          ctx.translate(s.x, s.y)
+          ctx.rotate((s.rot * Math.PI) / 180)
+          ctx.scale(s.scale, s.scale)
+          ctx.globalAlpha = s.opacity
+          ctx.fillStyle = p.color
+          const path = shapeOf(p)
+          ctx.fill(path)
+          if (p.kind === 'pebble' || p.kind === 'grass') {
+            ctx.lineWidth = 1.2
+            ctx.strokeStyle = p.kind === 'pebble' ? '#2a292e' : '#1f4a1a'
+            ctx.stroke(path)
+          }
+        }
+      }
+      ctx.globalAlpha = 1
+      if (live.length) raf = requestAnimationFrame(frame)
+      else {
+        running = false
+        ctx.setTransform(1, 0, 0, 1, 0, 0)
+        ctx.clearRect(0, 0, cv.width, cv.height)
+      }
+    }
+    wake = () => {
+      if (running) return
+      running = true
+      raf = requestAnimationFrame(frame)
+    }
+    if (live.length) wake()
+    return () => {
+      cancelAnimationFrame(raf)
+      wake = null
+    }
+  }, [])
+  return <canvas ref={ref} className="fx-canvas" />
 }

@@ -32,6 +32,7 @@ import {
 import { MapView, floorGeometry, type Ghost } from './MapView'
 import { SoundToggle } from './ui'
 import { HeroState, Hourglass, LifeFlask } from './Gauges'
+import { FxCanvas } from './TrailFx'
 import { Cap } from './Capsule'
 
 type DragTool = ToolId | 'stairs'
@@ -69,6 +70,13 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
     clearTimeout(hintTimer.current)
     hintTimer.current = setTimeout(() => setHint(null), 2200)
   }
+  /** depois de soltar um item, o hover não mostra prévia até o ponteiro sair da onda (senão parece que a trilha foi criada) */
+  const hoverLock = useRef(false)
+  const onHoverWave = useCallback((id: string | null) => {
+    if (id === null) hoverLock.current = false
+    else if (hoverLock.current) return
+    setHoverWaveId(id)
+  }, [])
   const planRef = useRef(plan)
   planRef.current = plan
 
@@ -181,7 +189,7 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
   useEffect(() => {
     if (!dragging || !dragTool) return
     const move = (e: PointerEvent) => setDrag((d) => (d ? { ...d, cx: e.clientX, cy: e.clientY } : d))
-    const up = () => {
+    const up = (e: PointerEvent) => {
       const t = dropRef.current
       const cur = planRef.current
       if (t && !t.ok) flashHint(t.reason)
@@ -191,6 +199,11 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
         commit(setStairs(cur, floorIdx, t.pos))
       }
       setDrag(null)
+      // só trava se o item foi solto em cima de uma onda
+      if (document.elementFromPoint(e.clientX, e.clientY)?.closest('.wave')) {
+        hoverLock.current = true
+        setHoverWaveId(null)
+      }
     }
     const key = (e: KeyboardEvent) => e.key === 'Escape' && setDrag(null)
     window.addEventListener('pointermove', move)
@@ -321,6 +334,7 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
       <div className="map-area">
         <div className={`map-frame ${drag ? 'dragging' : ''} ${linking || edgeDrag?.moved ? 'linking' : ''}`}>
           {hint && <div className="map-hint flash">{hint}</div>}
+          <FxCanvas />
           <MapView
             plan={preview?.plan ?? plan}
             sim={shown}
@@ -335,13 +349,19 @@ export const DungeonScreen = memo(function DungeonScreen(props: Props) {
             guides={guides}
             hiddenEdge={hiddenEdge}
             onEdgePointerDown={onEdgePointerDown}
-            onHoverWave={setHoverWaveId}
+            onHoverWave={onHoverWave}
             onWaveClick={onWaveClick}
             onItemClick={(si, ii) => commit(removeItem(plan, floorIdx, si, ii))}
             onStairsClick={() => floorIdx + 1 < plan.floors.length && setFloorIdx(floorIdx + 1)}
             onTailPointerDown={onTailPointerDown}
             onSvgPointerMove={onSvgPointerMove}
             onSvgPointerUp={onSvgPointerUp}
+            canRest={availability(props.save, plan, floorIdx, 'campfire').left > 0}
+            onRestSocket={(si) => {
+              const ok = edgeAccepts(edgeItemsOf(floor, si), 'campfire', edgeTrail(plan, floorIdx, si))
+              if (ok) commit(addItem(plan, floorIdx, si, 'campfire'))
+              else flashHint(edgeRule(edgeTrail(plan, floorIdx, si)))
+            }}
             hud={
               <>
                 <LifeFlask hp={sim.hpEnd} preview={showPrev ? shown.hpEnd : null} />

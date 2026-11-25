@@ -1,6 +1,6 @@
-import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as RPointerEvent, type RefObject } from 'react'
-import { drawDuration, makeBurst, type Burst } from '../game/fx'
-import { TrailFx } from './TrailFx'
+import { memo, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type PointerEvent as RPointerEvent, type RefObject } from 'react'
+import { drawDuration, makeBurst } from '../game/fx'
+import { spawnBurst } from './TrailFx'
 import { construction } from '../game/audio'
 import { CAMPFIRE_ICON, GOLD_ICON, HERO, ITEM_ART_OFFSET, ITEM_ART_RATIO, ITEMS, STAIRS_ICON, dungeonById, isWeapon, toolIcon, type ToolId, type TrailClass } from '../game/data'
 import { clusterLayout, edgeGeom, ICON_R, type EdgeGeom, type Pt } from '../game/geometry'
@@ -74,6 +74,9 @@ interface Props {
   onTailPointerDown: (e: RPointerEvent) => void
   onSvgPointerMove: (e: RPointerEvent) => void
   onSvgPointerUp: (e: RPointerEvent) => void
+  /** a fogueira ainda pode ser usada neste andar */
+  canRest: boolean
+  onRestSocket: (stepIdx: number) => void
   /** mostradores diegéticos (vida, ampulheta, ouro da run), desenhados por cima do mapa */
   hud?: ReactNode
 }
@@ -134,20 +137,20 @@ function socketLayout(items: ToolId[], cls: TrailClass) {
 const socketT = (e: EdgeGeom, k: number, n: number) => e.t0 + (e.t1 - e.t0) * (0.34 + (0.54 * (k + 0.5)) / n)
 
 /** Marco de distância da trilha (D1..D5 e o tempo que soma). */
-function DistanceBadge({ e, cls, ghost }: { e: EdgeGeom; cls: TrailClass; ghost?: boolean }) {
-  const pt = e.at(e.t0 + (e.t1 - e.t0) * 0.15)
+const DistanceBadge = memo(function DistanceBadge({ x, y, d, seconds, ghost }: { x: number; y: number; d: number; seconds: number; ghost?: boolean }) {
+  const cls = { d, seconds }
   return (
-    <g transform={`translate(${pt.x} ${pt.y})`} className={`dist-badge d${cls.d}`} opacity={ghost ? 0.85 : 1} pointerEvents="none">
+    <g transform={`translate(${x} ${y})`} className={`dist-badge d${cls.d}`} opacity={ghost ? 0.85 : 1} pointerEvents="none">
       <Capsule w={86} h={28} tone="dist" className="cap-lg">
         <text x={-15} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-d">D{cls.d}</text>
         <text x={17} y={1} textAnchor="middle" dominantBaseline="middle" className="dist-s">{cls.seconds}s</text>
       </Capsule>
     </g>
   )
-}
+})
 
 /** Etiquetas da onda: dano que ela causa (−N ♥) e ouro que ela dá (+N). */
-function WaveCost({ x, y, hp, struck, gold, dim }: { x: number; y: number; hp: number; struck: number | null; gold: number; dim?: boolean }) {
+const WaveCost = memo(function WaveCost({ x, y, hp, struck, gold, dim }: { x: number; y: number; hp: number; struck: number | null; gold: number; dim?: boolean }) {
   const hpTxt = `−${hp} ♥`
   const wHp = capWidth(hpTxt.length + (struck !== null ? String(struck).length + 1 : 0), 17)
   const wGold = capWidth(String(gold).length + 1, 17, 20)
@@ -171,7 +174,7 @@ function WaveCost({ x, y, hp, struck, gold, dim }: { x: number; y: number; hp: n
       </Capsule>
     </g>
   )
-}
+})
 
 export function MapView(p: Props) {
   const { plan, sim, floorIdx, ghost } = p
@@ -192,9 +195,7 @@ export function MapView(p: Props) {
   const ctx = `${plan.dungeon}:${floorIdx}`
   const seen = useRef<{ ctx: string; keys: Set<string> } | null>(null)
   const [drawing, setDrawing] = useState<Record<string, number>>({})
-  const [bursts, setBursts] = useState<Burst[]>([])
   const burstId = useRef(0)
-  const onBurstDone = useCallback((id: number) => setBursts((bs) => (bs.some((b) => b.id === id) ? bs.filter((b) => b.id !== id) : bs)), [])
 
   useLayoutEffect(() => {
     if (ghost) return // prévias não contam como construção
@@ -205,15 +206,13 @@ export function MapView(p: Props) {
     if (!fresh.length) return
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     const add: Record<string, number> = {}
-    const newBursts: Burst[] = []
     for (const e of fresh) {
       const dur = drawDuration(e.geom.samples)
       add[e.key] = dur
       construction(plan.dungeon, dur, Object.keys(add).length - 1)
-      if (!reduce) newBursts.push(makeBurst(plan.dungeon, e.geom.samples, dur, ++burstId.current))
+      if (!reduce) spawnBurst(makeBurst(plan.dungeon, e.geom.samples, dur, ++burstId.current))
     }
     setDrawing((d) => ({ ...d, ...add }))
-    if (newBursts.length) setBursts((bs) => [...bs, ...newBursts])
     const maxDur = Math.max(...Object.values(add))
     setTimeout(() => {
       setDrawing((d) => {
@@ -259,7 +258,6 @@ export function MapView(p: Props) {
       {p.guides.map(([a, b], i) => (
         <line key={'g' + i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className="link-line" pointerEvents="none" />
       ))}
-      <TrailFx bursts={bursts} onDone={onBurstDone} />
       {/* área de clique/arraste das trilhas (fica sob as ondas) */}
       {!ghost &&
         g.edges.map((e, i) => (
@@ -347,31 +345,49 @@ export function MapView(p: Props) {
         const { kinds, slotOf } = socketLayout(items, r.trail)
         const filled = new Set(slotOf)
         const isDrop = p.dropStep === si
+        const distPt = e.at(e.t0 + (e.t1 - e.t0) * 0.15)
         return (
           <g key={'sk' + si}>
-            <DistanceBadge e={e} cls={r.trail} ghost={ghostEdge} />
-            {kinds.map((kind, k) =>
-              filled.has(k) ? null : (
-                <g
-                  key={k}
-                  transform={`translate(${e.at(socketT(e, k, kinds.length)).x} ${e.at(socketT(e, k, kinds.length)).y})`}
-                  className={`socket ${isDrop ? (p.dropBlocked ? 'blocked' : 'open') : ''}`}
-                  pointerEvents="none"
-                >
-                  <circle r={17} />
-                  {kind === 'rest' ? (
-                    <image href={CAMPFIRE_ICON} x={-12} y={-12} width={24} height={24} opacity={0.45} />
-                  ) : kind === 'any' ? (
-                    <>
+            <DistanceBadge x={distPt.x} y={distPt.y} d={r.trail.d} seconds={r.trail.seconds} ghost={ghostEdge} />
+            {kinds.map((kind, k) => {
+              if (filled.has(k)) return null
+              const at = e.at(socketT(e, k, kinds.length))
+              // descanso só tem uma opção (a fogueira): clicar no encaixe já coloca, se ela ainda estiver livre no andar
+              const restOk = p.canRest && !ghost && !hidden
+              const place = (ev: { stopPropagation: () => void }) => {
+                ev.stopPropagation()
+                p.onRestSocket(si)
+              }
+              return (
+                <g key={k} transform={`translate(${at.x} ${at.y})`} className={`socket ${isDrop ? (p.dropBlocked ? 'blocked' : 'open') : ''}`}>
+                  {kind === 'rest' && (
+                    <g className={`sk-rest ${restOk ? 'can' : 'off'}`} onPointerDown={restOk ? place : undefined}>
+                      <circle r={17} />
+                      <image href={CAMPFIRE_ICON} x={-12} y={-12} width={24} height={24} />
+                      {restOk && <title>Clique para descansar aqui (fogueira)</title>}
+                    </g>
+                  )}
+                  {kind === 'res' && (
+                    <g pointerEvents="none">
+                      <circle r={17} />
                       <path d="M-6 0h12M0 -6v12" className="socket-plus" />
-                      <image href={CAMPFIRE_ICON} x={4} y={2} width={13} height={13} opacity={0.5} />
-                    </>
-                  ) : (
-                    <path d="M-6 0h12M0 -6v12" className="socket-plus" />
+                    </g>
+                  )}
+                  {kind === 'any' && (
+                    <g className="sk-split">
+                      {/* encaixe único: recurso OU fogueira, lado a lado; ao preencher, sobra só o tipo escolhido */}
+                      <path d="M-2 -19 H-5 A19 19 0 0 0 -5 19 H-2 Z" className="sk-half res" pointerEvents="none" />
+                      <path d="M-18 0h10M-13 -5v10" className="socket-plus" pointerEvents="none" />
+                      <g className={`sk-rest ${restOk ? 'can' : 'off'}`} onPointerDown={restOk ? place : undefined}>
+                        <path d="M2 -19 H5 A19 19 0 0 1 5 19 H2 Z" className="sk-half" />
+                        <image href={CAMPFIRE_ICON} x={3} y={-11} width={22} height={22} />
+                        {restOk && <title>Clique para descansar aqui (fogueira)</title>}
+                      </g>
+                    </g>
                   )}
                 </g>
-              ),
-            )}
+              )
+            })}
             {items.map((tool, ii) => {
               const pt = e.at(socketT(e, slotOf[ii], kinds.length))
               const res = r.items[ii]

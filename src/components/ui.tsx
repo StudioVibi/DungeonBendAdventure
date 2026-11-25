@@ -1,11 +1,11 @@
-import { useEffect, useId, useState, useSyncExternalStore } from 'react'
+import { memo, useEffect, useId, useState, useSyncExternalStore } from 'react'
 import { isMuted, onMuteChange, setMuted } from '../game/audio'
 import { GOLD_ICON, HERO, MONSTERS, type MonsterId } from '../game/data'
 
 const SPRITE_RATIO = 600 / 520
 
 /** Ícone circular com o recorte da cabeça do monstro (dentro de um <svg>). */
-export function MonsterHead({ monster, cx, cy, r, dim = false }: { monster: MonsterId; cx: number; cy: number; r: number; dim?: boolean }) {
+export const MonsterHead = memo(function MonsterHead({ monster, cx, cy, r, dim = false }: { monster: MonsterId; cx: number; cy: number; r: number; dim?: boolean }) {
   const id = useId()
   const m = MONSTERS[monster]
   const w = r / m.head.r
@@ -20,7 +20,7 @@ export function MonsterHead({ monster, cx, cy, r, dim = false }: { monster: Mons
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#f3e6c8" strokeWidth={3} />
     </g>
   )
-}
+})
 
 /** Versão HTML (fora do mapa) do ícone de cabeça. */
 export function MonsterHeadBadge({ monster, size = 40 }: { monster: MonsterId; size?: number }) {
