@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import { DUNGEONS, HERO, MONSTERS, dungeonById, type DungeonId } from '../game/data'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { DUNGEONS, GOLD_ICON, HERO, MONSTERS, dungeonById, type DungeonId } from '../game/data'
 import LAYOUT from '../game/overworld-layout.json'
 import { runStatus, type Run, type Save } from '../game/plan'
-import { Gold, HeartIcon, MonsterHeadBadge, SoundToggle, useFrame } from './ui'
+import { Gold, MonsterHeadBadge, SoundToggle, useFrame } from './ui'
+import { Cap, Capsule } from './Capsule'
 
 type PlaceId = DungeonId | 'shop'
 const PLACES = LAYOUT.places as Record<PlaceId, { x: number; y: number; w: number; h: number; door: { x: number; y: number } }>
@@ -89,14 +90,15 @@ export function MainMenu(p: Props) {
   return (
     <div className="menu">
       <TopBar {...p} />
+      <div className="menu-body">
       <div className="world-wrap">
-        <svg className="world" viewBox={`0 0 ${LAYOUT.scene.w} ${LAYOUT.scene.h}`} preserveAspectRatio="xMidYMid slice">
+        <svg className="world" viewBox={`0 0 ${LAYOUT.scene.w} ${LAYOUT.scene.h}`} preserveAspectRatio="xMidYMax meet">
           <image href="/assets/generated/overworld/plain.svg" width={LAYOUT.scene.w} height={LAYOUT.scene.h} />
           {/* cena por profundidade: quem tem a base mais baixa fica na frente (árvores × barraca × Alberto) */}
           {[
             ...DRAW_ORDER.map((id) => ({ kind: 'place' as const, id, base: PLACES[id].y + PLACES[id].h / 2 - 24 })),
             ...TREES.map((t, i) => ({ kind: 'tree' as const, i, base: t.y })),
-            { kind: 'hero' as const, base: heroPos.y + 12 },
+            { kind: 'hero' as const, base: running ? PLACES[running.dungeon].y + PLACES[running.dungeon].h / 2 - 23 : heroPos.y + 12 },
           ]
             .sort((a, b) => a.base - b.base)
             .map((it) => {
@@ -146,30 +148,17 @@ export function MainMenu(p: Props) {
             const run = runOf(d.id)
             const st = run ? runStatus(run, now) : null
             const draft = !run && save.plans[d.id]?.floors.some((f) => f.steps.length)
-            const top = `translate(${pl.x} ${pl.y - pl.h / 2 + 6})`
+            const top = `translate(${pl.x} ${pl.y - pl.h / 2 + 2})`
             if (draft) return <SavedTrailMarker key={d.id} transform={top} />
             if (!run || !st) return null
-            const label = st === 'running' ? `⚔ ${clock(run.endAt - now)}` : st === 'queued' ? `na fila · ${clock(run.startAt - now)}` : run.result.alive ? '✓ Coletar' : '☠ Relatório'
-            const pct = st === 'running' ? (now - run.startAt) / (run.endAt - run.startAt) : 0
-            return (
-              <g key={d.id} transform={top} className={`world-tag ${st}`} pointerEvents="none">
-                <g className="tag-body">
-                  <rect x={-70} y={-20} width={140} height={34} rx={17} />
-                  <text y={2} textAnchor="middle" dominantBaseline="middle">{label}</text>
-                  {st === 'running' && (
-                    <>
-                      <rect x={-56} y={8} width={112} height={4} rx={2} className="tag-track" />
-                      <rect x={-56} y={8} width={112 * pct} height={4} rx={2} className="tag-fill" />
-                    </>
-                  )}
-                </g>
-              </g>
-            )
+            return <WorldTag key={d.id} transform={top} run={run} st={st} now={now} pos={queuePos(save.runs, run.id, now)} />
           })}
           {p.hospitalUntil > 0 && (
-            <g transform={`translate(${heroPos.x} ${heroPos.y - 120})`} className="world-tag hospital" pointerEvents="none">
-              <rect x={-62} y={-18} width={124} height={32} rx={16} />
-              <text y={2} textAnchor="middle" dominantBaseline="middle">🏥 {clock(p.hospitalUntil - now)}</text>
+            <g transform={`translate(${heroPos.x} ${heroPos.y - 118})`} className="world-tag hospital">
+              <Capsule w={190} h={50} tone="hospital" className="cap-xl">
+                <CrossIcon x={-62} />
+                <text x={16} y={1} textAnchor="middle" dominantBaseline="middle">{clock(p.hospitalUntil - now)}</text>
+              </Capsule>
             </g>
           )}
         </svg>
@@ -187,14 +176,76 @@ export function MainMenu(p: Props) {
             onLeave={scheduleClose}
           />
         )}
-        {p.hospitalUntil > 0 && (
-          <div className="hospital-note">
-            🏥 {HERO.name} está no hospital — runs na fila começam depois da alta.
-            <button className="link-btn" onClick={p.onSkipHospital} title="Atalho de playtest">⏩ dar alta</button>
-          </div>
-        )}
+      </div>
+      <QueueRail {...p} />
       </div>
     </div>
+  )
+}
+
+// ---------------- etiqueta no mundo (acima da dungeon) ----------------
+
+function queuePos(runs: Run[], id: string, now: number) {
+  return runs.filter((r) => runStatus(r, now) === 'queued').findIndex((r) => r.id === id) + 1
+}
+
+function HourglassIcon({ x = 0, y = 0, s = 1 }: { x?: number; y?: number; s?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) scale(${s})`} className="ico-hourglass">
+      <path d="M-7 -10h14M-7 10h14" className="ico-frame" />
+      <path d="M-5.5 -10c0 6 5.5 6.5 5.5 10c0 3.5-5.5 4-5.5 10M5.5 -10c0 6-5.5 6.5-5.5 10c0 3.5 5.5 4 5.5 10" className="ico-glass" />
+      <path d="M-3.5 -6.5h7l-3.5 4.5z" className="ico-sand top" />
+      <path d="M-4 9.5c1-3.5 3-4.5 4-4.5s3 1 4 4.5z" className="ico-sand" />
+      <path d="M0 -2v7" className="ico-stream" />
+    </g>
+  )
+}
+
+function CrossIcon({ x = 0, y = 0 }: { x?: number; y?: number }) {
+  return <path transform={`translate(${x} ${y})`} d="M-3.5 -10h7v6.5h6.5v7h-6.5v6.5h-7v-6.5h-6.5v-7h6.5z" className="ico-cross" />
+}
+
+function WorldTag({ transform, run, st, now, pos }: { transform: string; run: Run; st: ReturnType<typeof runStatus>; now: number; pos: number }) {
+  const W = 232
+  const H = 54
+  const pct = st === 'running' ? Math.min(1, (now - run.startAt) / (run.endAt - run.startAt)) : 0
+  const tone = st === 'running' ? 'run' : st === 'queued' ? 'queue' : run.result.alive ? 'done' : 'bad'
+  const iconX = -W / 2 + 40
+  return (
+    <g transform={transform} className={`world-tag ${st}`} pointerEvents="none">
+      <g className="tag-body">
+        {/* haste que liga a placa ao lugar */}
+        <path d={`M0 ${H / 2 - 2} L-9 ${H / 2 + 12} H9 Z`} className={`tag-pin t-${tone}`} />
+        <Capsule w={W} h={H} tone={tone} className="cap-xl">
+          {st === 'running' && (
+            <>
+              <HourglassIcon x={iconX} s={1.35} />
+              <text x={20} y={-4} textAnchor="middle" dominantBaseline="middle">{clock(run.endAt - now)}</text>
+              <path d="M-38 15h116" className="tag-track" />
+              <path d={`M-38 15h${Math.max(0.01, 116 * pct)}`} className="tag-fill" />
+            </>
+          )}
+          {st === 'queued' && (
+            <>
+              <text x={iconX} y={2} textAnchor="middle" dominantBaseline="middle" className="tag-num">#{pos}</text>
+              <text x={20} y={2} textAnchor="middle" dominantBaseline="middle">em {clock(run.startAt - now)}</text>
+            </>
+          )}
+          {st === 'done' &&
+            (run.result.alive ? (
+              <>
+                <image href={GOLD_ICON} x={iconX - 17} y={-18} width={34} height={39} />
+                <text x={20} y={2} textAnchor="middle" dominantBaseline="middle">Coletar +{run.result.gold}</text>
+              </>
+            ) : (
+              <>
+                <text x={iconX} y={3} textAnchor="middle" dominantBaseline="middle" className="tag-skull">☠</text>
+                <text x={20} y={2} textAnchor="middle" dominantBaseline="middle">Relatório</text>
+              </>
+            ))}
+        </Capsule>
+      </g>
+    </g>
   )
 }
 
@@ -297,25 +348,13 @@ function statusLine(run: Run | undefined, st: ReturnType<typeof runStatus> | nul
 // ---------------- barra superior ----------------
 
 function TopBar(p: Props) {
-  const { save, now } = p
-  const [openQ, setOpenQ] = useState(false)
-  const running = save.runs.find((r) => runStatus(r, now) === 'running')
-  const done = save.runs.filter((r) => runStatus(r, now) === 'done').length
   return (
     <header className="topbar">
       <div className="logo">DungeonBend <span>Adventure</span></div>
       <div className="topbar-right">
-        {save.runs.length > 0 && (
-          <div className="queue-menu">
-            <button className={`top-btn ${done ? 'alert' : ''}`} data-sfx="none" onClick={() => setOpenQ((v) => !v)}>
-              Fila <b>{save.runs.length}</b>
-              {running && <span className="top-timer">⏳ {clock(running.endAt - now)}</span>}
-              {done > 0 && <span className="top-done">{done} pronta{done > 1 ? 's' : ''}</span>}
-            </button>
-            {openQ && <QueueCascade {...p} onClose={() => setOpenQ(false)} />}
-          </div>
-        )}
-        <span className="top-gold"><Gold value={save.gold} size={22} /></span>
+        <Cap tone="gold" className="big" title="Seu ouro">
+          <Gold value={p.save.gold} size={22} />
+        </Cap>
         <button className="top-btn" onClick={p.onCollection}>Coleção</button>
         <SoundToggle />
       </div>
@@ -323,48 +362,72 @@ function TopBar(p: Props) {
   )
 }
 
-function QueueCascade(p: Props & { onClose: () => void }) {
+// ---------------- fila (barra lateral fixa) ----------------
+
+function QueueRail(p: Props) {
   const { save, now } = p
+  const hospital = p.hospitalUntil > now
   return (
-    <div className="queue-drop" onPointerLeave={p.onClose}>
-      <ol className="cascade">
-        {save.runs.map((r, i) => {
-          const st = runStatus(r, now)
-          const d = DUNGEONS.find((x) => x.id === r.dungeon)!
-          const inHospital = st === 'done' && (r.hospitalUntil ?? 0) > now
-          return (
-            <li key={r.id} className="cascade-step" style={{ marginLeft: Math.min(i, 4) * 12 }}>
-              <div className={`qcard st-${st}`} style={{ borderLeftColor: d.accent }}>
-                <div className="qc-top">
-                  <span className="qi-name" style={{ color: d.accent }}>{d.name}</span>
-                  <span className="qc-info">{r.result.alive ? <Gold value={r.result.gold} size={14} /> : <span className="bad">☠</span>}</span>
-                </div>
-                {st === 'running' && (
-                  <div className="qc-row">
-                    <span className="qi-state">⏳ {clock(r.endAt - now)}</span>
-                    <button className="link-btn" onClick={p.onSkip} title="Atalho de playtest">⏩</button>
+    <aside className="queue-rail">
+      <div className="qr-head">
+        <span className="qr-title">Fila</span>
+        <span className="qr-sub">uma run de cada vez</span>
+      </div>
+      {hospital && (
+        <div className="qr-hospital">
+          <Cap tone="hospital">✚ {clock(p.hospitalUntil - now)}</Cap>
+          <span>{HERO.name} no hospital. A fila espera a alta.</span>
+          <button className="link-btn" onClick={p.onSkipHospital} title="Atalho de playtest">⏩ dar alta</button>
+        </div>
+      )}
+      {save.runs.length === 0 ? (
+        <p className="qr-empty">Nenhuma run em andamento. Planeje uma trilha numa dungeon e ela aparece aqui.</p>
+      ) : (
+        <ol className="qr-list">
+          {save.runs.map((r) => {
+            const st = runStatus(r, now)
+            const d = DUNGEONS.find((x) => x.id === r.dungeon)!
+            const inHospital = st === 'done' && (r.hospitalUntil ?? 0) > now
+            const pct = st === 'running' ? Math.min(1, (now - r.startAt) / (r.endAt - r.startAt)) : st === 'done' ? 1 : 0
+            return (
+              <li key={r.id} className={`qr-item st-${st}`}>
+                <span className="qr-node" style={{ borderColor: d.accent }} />
+                <div className="qr-card" style={{ '--acc': d.accent } as CSSProperties}>
+                  <img className="qr-thumb" src={`/assets/generated/overworld/${d.id}.svg`} alt="" />
+                  <div className="qr-main">
+                    <div className="qr-name">{d.name}</div>
+                    {st === 'running' && (
+                      <div className="qr-row">
+                        <Cap tone="run" className="small">⏳ {clock(r.endAt - now)}</Cap>
+                        <button className="link-btn" onClick={p.onSkip} title="Atalho de playtest">⏩</button>
+                      </div>
+                    )}
+                    {st === 'queued' && (
+                      <div className="qr-row">
+                        <Cap tone="queue" className="small">em {clock(r.startAt - now)}</Cap>
+                        <button className="link-btn" data-sfx="back" onClick={() => p.onCancelQueued(r.id)} title="Tirar da fila">✕</button>
+                      </div>
+                    )}
+                    {st === 'done' && (
+                      <button className="qr-collect" onClick={() => p.onOpenReport(r.id)}>
+                        {r.result.alive ? <>Coletar <Gold value={`+${r.result.gold}`} size={16} /></> : '☠ Ver relatório'}
+                      </button>
+                    )}
                   </div>
-                )}
-                {st === 'queued' && (
-                  <div className="qc-row">
-                    <span className="muted">em {clock(r.startAt - now)}</span>
-                    <button className="link-btn" data-sfx="back" onClick={() => p.onCancelQueued(r.id)} title="Tirar da fila">✕</button>
-                  </div>
-                )}
-                {st === 'done' && (
-                  <button className="btn primary small-btn qc-collect" onClick={() => p.onOpenReport(r.id)}>Coletar</button>
-                )}
-              </div>
-              {r.hospitalUntil && (st !== 'done' || inHospital) && (
-                <div className={`qcard hospital-step ${inHospital ? 'st-running' : ''}`}>
-                  🏥 {inHospital ? clock((r.hospitalUntil ?? 0) - now) : 'hospital 2h'}
+                  {st !== 'queued' && (
+                    <div className="qr-bar">
+                      <div style={{ width: `${pct * 100}%` }} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </li>
-          )
-        })}
-      </ol>
-      <div className="queue-foot"><HeartIcon size={12} /> As runs acontecem uma de cada vez.</div>
-    </div>
+                {r.hospitalUntil && (st !== 'done' || inHospital) && (
+                  <div className="qr-hosp">✚ {inHospital ? clock((r.hospitalUntil ?? 0) - now) : 'depois: hospital'}</div>
+                )}
+              </li>
+            )
+          })}
+        </ol>
+      )}
+    </aside>
   )
 }
